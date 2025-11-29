@@ -96,6 +96,61 @@ compareMaxSectors() {
     return 1
 }
 
+# Ensure target partitions are in correct order
+# system -> cache -> hidden -> userdata
+# Stores required partition IDs and sizes before cloning
+checkEmmcPartitionLayout() {
+    local emmc_partition_table
+    local partition_names
+    local system_id cache_id hidden_id userdata_id last_id
+    local system_start_sector
+    local partition_count
+
+    if ! emmcAvailable; then
+        echo "$NAME: eMMC device not found: $DEV_BLOCK_EMMC" >&2
+        return 1
+    fi
+
+    emmc_partition_table=$(sgdisk --print "$DEV_BLOCK_EMMC" 2>/dev/null) || {
+        echo "$NAME: failed to read eMMC partition table" >&2
+        return 1
+    }
+
+    # Extract id, start sector and name e.g. 25:393216:system
+    partition_names=$(printf '%s\n' "$emmc_partition_table" | awk '/^[[:space:]]*[0-9]+/ {print $1":"$2":"$7}')
+
+    system_id=$(echo "$partition_names" | grep ":system$" | cut -d: -f1)
+    cache_id=$(echo "$partition_names" | grep ":cache$" | cut -d: -f1)
+    hidden_id=$(echo "$partition_names" | grep ":hidden$" | cut -d: -f1)
+    userdata_id=$(echo "$partition_names" | grep ":userdata$" | cut -d: -f1)
+
+    # check partition order
+    if [ "$cache_id" -ne $((system_id + 1)) ] ||
+       [ "$hidden_id" -ne $((cache_id + 1)) ] ||
+       [ "$userdata_id" -ne $((hidden_id + 1)) ]; then
+        echo "$NAME: partition IDs are not consecutive!" >&2
+        return 1
+    fi
+
+    last_id=$(echo "$partition_names" | tail -n1 | cut -d: -f1)
+
+    if [ "$userdata_id" -lt "$last_id" ]; then
+        echo "$NAME: additional partition(s) found after userdata!"
+        return 1
+    fi
+
+    partition_count=$(printf '%s\n' "$emmc_partition_table" | grep -E '^[[:space:]]*[0-9]+' | wc -l)
+    system_start_sector=$(echo "$partition_names" | grep ":system$" | cut -d: -f2)
+
+    updateProperty "emmc_partition_count" "$partition_count" "$PROP"
+    updateProperty "system_start_sector" "$system_start_sector" "$PROP"
+    updateProperty "system_partition_id" "$system_id" "$PROP"
+    updateProperty "cache_partition_id" "$cache_id" "$PROP"
+    updateProperty "hidden_partition_id" "$hidden_id" "$PROP"
+    updateProperty "userdata_partition_id" "$userdata_id" "$PROP"
+    return 0
+}
+
 {
     if type "$1" >/dev/null 2>&1; then
         "$1"
