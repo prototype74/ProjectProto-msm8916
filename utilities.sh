@@ -69,6 +69,36 @@ setPartitionCount() {
     return 0
 }
 
+# Check if ProjectProto is installed on microSD card
+projectProtoInstalled() {
+    local microsd_partition_table
+    local partition_names
+    local microsd_partition_count
+    local vendor_available
+
+    if ! microSdCardAvailable; then
+        echo "$NAME: microSD card not found: $DEV_BLOCK_MICROSD" >&2
+        return 1
+    fi
+
+    microsd_partition_table=$(sgdisk --print "$DEV_BLOCK_MICROSD" 2>/dev/null) || {
+        echo "$NAME: failed to read microSD card partition table" >&2
+        return 1
+    }
+
+    partition_names=$(printf '%s\n' "$microsd_partition_table" | awk '/^[[:space:]]*[0-9]+/ {print $7}')
+    microsd_partition_count=$(printf '%s\n' "$partition_names" | wc -l)
+    vendor_available=$(printf '%s\n' "$partition_names" | grep "vendor")
+
+    if [ "$microsd_partition_count" -eq 29 ] && [ -n "$vendor_available" ]; then
+        echo "$NAME: ProjectProto is installed"
+        return 0
+    fi
+
+    echo "$NAME: ProjectProto not installed" >&2
+    return 1
+}
+
 {
     if type "$1" >/dev/null 2>&1; then
         "$1"
