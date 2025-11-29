@@ -21,6 +21,9 @@
 # SOFTWARE.
 
 source /tmp/scripts/constants.sh  # import constants script
+source /tmp/scripts/property_lite.sh  # import property_lite script
+
+NAME="utilities"
 
 # Check if eMMC is available
 emmcAvailable() {
@@ -30,4 +33,28 @@ emmcAvailable() {
 # Check if microSD card is available
 microSdCardAvailable() {
     [ -b "$DEV_BLOCK_MICROSD" ] && return 0 || return 1;
+}
+
+# Set partition count available on microSD card
+setPartitionCount() {
+    local count
+
+    if ! microSdCardAvailable; then
+        echo "$NAME: microSD card not found: $DEV_BLOCK_MICROSD" >&2
+        return 1
+    fi
+
+    count=$(sgdisk --print "$DEV_BLOCK_MICROSD" | grep -E '^[[:space:]]*[0-9]+' | wc -l)
+    updateProperty "microsd_partition_count" "$count" "$PROP"
+    return 0
+}
+
+{
+    if type "$1" >/dev/null 2>&1; then
+        "$1"
+        exit $?
+    else
+        echo "Function $1 not found" >&2
+        exit 1
+    fi
 }

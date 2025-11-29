@@ -54,6 +54,7 @@ generateProperties() {
     echo "#Auto generated properties file" >> "$PROP"
     echo "#$current_date" >> "$PROP"
     echo "device_variant=unknown" >> "$PROP"
+    echo "microsd_partition_count=0" >> "$PROP"
 
     chmod 0644 "$PROP"
     echo "init: properties generated successfully"
