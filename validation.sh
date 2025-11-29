@@ -22,6 +22,7 @@
 
 source /tmp/scripts/constants.sh  # import constants script
 source /tmp/scripts/property_lite.sh  # import property_lite script
+source /tmp/scripts/utilities.sh  # import utilities script
 
 NAME="validation"
 
@@ -52,6 +53,47 @@ checkDevice() {
     echo "$NAME: device supported ($device)"
     updateProperty "device_variant" "$device" "$PROP"
     return 0
+}
+
+# Compare sector sizes between eMMC and microSD card
+compareMaxSectors() {
+    local emmc_max_sectors
+    local microsd_max_sectors
+
+    # Ensure both block devices exist
+    if ! emmcAvailable; then
+        echo "$NAME: eMMC device not found: $DEV_BLOCK_EMMC" >&2
+        return 1
+    fi
+
+    if ! microSdCardAvailable; then
+        echo "$NAME: microSD card not found: $DEV_BLOCK_MICROSD" >&2
+        return 1
+    fi
+
+    microsd_max_sectors=$(blockdev --getsz "$DEV_BLOCK_MICROSD" 2>/dev/null) || {
+        echo "$NAME: failed to retrieve sector size of microSD card" >&2
+        return 1
+    }
+
+    # ~ 14.3 GiB
+    if [ "$microsd_max_sectors" -lt 30000000 ]; then
+        echo "$NAME: microSD card size is lower than 16 GB" >&2
+        return 1
+    fi
+
+    emmc_max_sectors=$(blockdev --getsz "$DEV_BLOCK_EMMC" 2>/dev/null) || {
+        echo "$NAME: failed to retrieve sector size of eMMC" >&2
+        return 1
+    }
+
+    if [ "$microsd_max_sectors" -ge "$emmc_max_sectors" ]; then
+        echo "$NAME: sufficient max sectors on microSD card"
+        return 0
+    fi
+
+    echo "$NAME: not enough sectors on microSD card" >&2
+    return 1
 }
 
 {
