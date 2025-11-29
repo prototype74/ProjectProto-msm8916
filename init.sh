@@ -22,6 +22,19 @@
 
 source /tmp/scripts/constants.sh  # import constants script
 
+# Print relevant debugging information
+printDeviceInformation() {
+    echo "Device information:"
+    echo "- Platform:          $(getprop ro.board.platform)"
+    echo "- Board:             $(getprop ro.product.board)"
+    echo "- Bootloader:        $(getprop ro.boot.bootloader)"
+    echo "- Model:             $(getprop ro.product.model)"
+    echo "- Device:            $(getprop ro.product.device)"
+    echo "- SoC manufacturer:  $(getprop ro.hardware)"
+    echo "- TWRP version:      $(getprop ro.twrp.version)"
+    echo "- TWRP fingerprint:  $(getprop ro.build.fingerprint)"
+}
+
 # Generate init properties
 generateProperties() {
     local current_date
@@ -49,6 +62,7 @@ generateProperties() {
 # MAIN FUNCTION
 {
 	echo "start init environment"
+	printDeviceInformation
 	generateProperties
 	exit 0
 }
