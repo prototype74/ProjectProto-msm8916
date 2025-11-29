@@ -51,9 +51,9 @@ generateProperties() {
 
     echo "init: generating properties"
 
-	echo "#Auto generated properties file" >> "$PROP"
-	echo "#$current_date" >> "$PROP"
-	echo "device_variant=unknown" >> "$PROP"
+    echo "#Auto generated properties file" >> "$PROP"
+    echo "#$current_date" >> "$PROP"
+    echo "device_variant=unknown" >> "$PROP"
 
     chmod 0644 "$PROP"
     echo "init: properties generated successfully"
@@ -61,8 +61,8 @@ generateProperties() {
 
 # MAIN FUNCTION
 {
-	echo "start init environment"
-	printDeviceInformation
-	generateProperties
-	exit 0
+    echo "start init environment"
+    printDeviceInformation
+    generateProperties
+    exit 0
 }
