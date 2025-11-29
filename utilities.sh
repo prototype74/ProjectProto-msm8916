@@ -35,6 +35,26 @@ microSdCardAvailable() {
     [ -b "$DEV_BLOCK_MICROSD" ] && return 0 || return 1;
 }
 
+# Calculate size of microSD card in gibibyte
+calculateMicroSdSize() {
+    local microsd_max_sectors
+    local sectors
+	local result
+
+    if ! microSdCardAvailable; then
+        echo "$NAME: microSD card not found: $DEV_BLOCK_MICROSD" >&2
+        return 1
+    fi
+
+    microsd_max_sectors=$(blockdev --getsz "$DEV_BLOCK_MICROSD")
+    sectors=$(blockdev --getss "$DEV_BLOCK_MICROSD")
+    result=$(awk -v sectors="$sectors" -v max_sectors="$microsd_max_sectors" \
+        'BEGIN {printf "%.1f", (max_sectors * sectors) / (1024^3)}')
+
+    updateProperty "microsd_size" "$result" "$PROP"
+    return 0
+}
+
 # Set partition count available on microSD card
 setPartitionCount() {
     local count
