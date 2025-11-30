@@ -76,6 +76,8 @@ compareMaxSectors() {
         return 1
     }
 
+    checkNumeric "$NAME" "microsd_max_sectors" "$microsd_max_sectors" || return 1
+
     # ~ 14.3 GiB
     if [ "$microsd_max_sectors" -lt 30000000 ]; then
         echo "$NAME: microSD card size is lower than 16 GB" >&2
@@ -86,6 +88,8 @@ compareMaxSectors() {
         echo "$NAME: failed to retrieve sector size of eMMC" >&2
         return 1
     }
+
+    checkNumeric "$NAME" "emmc_max_sectors" "$emmc_max_sectors" || return 1
 
     if [ "$microsd_max_sectors" -ge "$emmc_max_sectors" ]; then
         echo "$NAME: sufficient max sectors on microSD card"
@@ -124,6 +128,11 @@ checkEmmcPartitionLayout() {
     hidden_id=$(echo "$partition_names" | grep ":hidden$" | cut -d: -f1)
     userdata_id=$(echo "$partition_names" | grep ":userdata$" | cut -d: -f1)
 
+    checkNumeric "$NAME" "system_id" "$system_id" || return 1
+    checkNumeric "$NAME" "cache_id" "$cache_id" || return 1
+    checkNumeric "$NAME" "hidden_id" "$hidden_id" || return 1
+    checkNumeric "$NAME" "userdata_id" "$userdata_id" || return 1
+
     # check partition order
     if [ "$cache_id" -ne $((system_id + 1)) ] ||
        [ "$hidden_id" -ne $((cache_id + 1)) ] ||
@@ -133,6 +142,7 @@ checkEmmcPartitionLayout() {
     fi
 
     last_id=$(echo "$partition_names" | tail -n1 | cut -d: -f1)
+    checkNumeric "$NAME" "last_id" "$last_id" || return 1
 
     if [ "$userdata_id" -lt "$last_id" ]; then
         echo "$NAME: additional partition(s) found after userdata!"
@@ -141,6 +151,9 @@ checkEmmcPartitionLayout() {
 
     partition_count=$(printf '%s\n' "$emmc_partition_table" | grep -E '^[[:space:]]*[0-9]+' | wc -l)
     system_start_sector=$(echo "$partition_names" | grep ":system$" | cut -d: -f2)
+
+    checkNumeric "$NAME" "partition_count" "$partition_count" || return 1
+    checkNumeric "$NAME" "system_start_sector" "$system_start_sector" || return 1
 
     updateProperty "emmc_partition_count" "$partition_count" "$PROP"
     updateProperty "system_start_sector" "$system_start_sector" "$PROP"

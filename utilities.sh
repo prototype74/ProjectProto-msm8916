@@ -35,6 +35,27 @@ microSdCardAvailable() {
     [ -b "$DEV_BLOCK_MICROSD" ] && return 0 || return 1;
 }
 
+# Check if given value is a valid number
+checkNumeric() {
+    local scr_name="$1"
+    local name="$2"
+    local value="$3"
+
+    if [ -z "$value" ]; then
+        echo "$scr_name: '$name' is empty!" >&2
+        return 1
+    fi
+
+    case "$value" in
+        *[!0-9]*)
+            echo "$scr_name: '$name' is not numeric: '$value'" >&2
+            return 1
+            ;;
+    esac
+
+    return 0
+}
+
 # Calculate size of microSD card in gibibyte
 calculateMicroSdSize() {
     local microsd_max_sectors
@@ -89,6 +110,8 @@ projectProtoInstalled() {
     partition_names=$(printf '%s\n' "$microsd_partition_table" | awk '/^[[:space:]]*[0-9]+/ {print $7}')
     microsd_partition_count=$(printf '%s\n' "$partition_names" | wc -l)
     vendor_available=$(printf '%s\n' "$partition_names" | grep "vendor")
+
+    checkNumeric "$NAME" "microsd_partition_count" "$microsd_partition_count" || return 1
 
     if [ "$microsd_partition_count" -eq 29 ] && [ -n "$vendor_available" ]; then
         echo "$NAME: ProjectProto is installed"
