@@ -34,7 +34,7 @@ NAME="repartitioner"
 repartitionMicroSdCard() {
     local microsd_partition_table partition_names
     local system_id cache_id hidden_id userdata_id vendor_id
-    local system_start_sector vendor_start_sector
+    local vendor_start_sector
     local cache_sector_size hidden_sector_size vendor_sector_size
     local total_sectors sector_size
     local part_id part_name
