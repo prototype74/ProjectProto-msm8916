@@ -21,65 +21,41 @@
 # SOFTWARE.
 
 source /tmp/scripts/constants.sh  # import constants script
-source /tmp/scripts/property_lite.sh  # import property_lite script
 source /tmp/scripts/utilities.sh  # import utilities script
 
 NAME="cloner"
 
-# Ensure the target partitions between eMMC and microSD card are
+# Ensure the partition layouts between eMMC and microSD card are
 # identical after clone
 _checkMicroSdPartitionLayout() {
-    local microsd_partition_table
-    local partition_names part_name
-    local microsd_partition_count emmc_partition_count
-    local microsd_part_id emmc_part_id
-    local microsd_system_start_sector emmc_system_start_sector
+    local emmc_partition_table microsd_partition_table
+    local emmc_partition_names microsd_partition_names
+
+    if ! emmcAvailable; then
+        echo "$NAME: eMMC device not found: $DEV_BLOCK_EMMC" >&2
+        return 1
+    fi
 
     if ! microSdCardAvailable; then
         echo "$NAME: microSD card not found: $DEV_BLOCK_MICROSD" >&2
         return 1
     fi
 
+    emmc_partition_table=$(sgdisk --print "$DEV_BLOCK_EMMC" 2>/dev/null) || {
+        echo "$NAME: failed to read eMMC partition table" >&2
+        return 1
+    }
+
     microsd_partition_table=$(sgdisk --print "$DEV_BLOCK_MICROSD" 2>/dev/null) || {
         echo "$NAME: failed to read microSD card partition table" >&2
         return 1
     }
 
-    partition_names=$(printf '%s\n' "$microsd_partition_table" | awk '/^[[:space:]]*[0-9]+/ {print $1":"$2":"$7}')
-    microsd_partition_count=$(printf '%s\n' "$partition_names" | wc -l)
-    emmc_partition_count=$(getProperty "emmc_partition_count" "$PROP")
+    emmc_partition_names=$(printf '%s\n' "$emmc_partition_table" | awk '/^[[:space:]]*[0-9]+/ {print $1":"$2":"$7}')
+    microsd_partition_names=$(printf '%s\n' "$microsd_partition_table" | awk '/^[[:space:]]*[0-9]+/ {print $1":"$2":"$7}')
 
-    checkNumeric "$NAME" "microsd_partition_count" "$microsd_partition_count" || return 1
-    checkNumeric "$NAME" "emmc_partition_count" "$emmc_partition_count" || return 1
-
-    if [ "$microsd_partition_count" -ne "$emmc_partition_count" ]; then
-        echo "$NAME: number of partitions on microSD card does not match the eMMC!" >&2
-        return 1
-    fi
-
-    echo "$NAME: comparing target partition IDs between eMMC and microSD card"
-
-    for part_name in system cache hidden userdata; do
-        microsd_part_id=$(echo "$partition_names" | grep ":$part_name$" | cut -d: -f1)
-        emmc_part_id=$(getProperty "${part_name}_partition_id" "$PROP")
-
-        checkNumeric "$NAME" "microsd_${part_name}_id" "$microsd_part_id" || return 1
-        checkNumeric "$NAME" "emmc_${part_name}_id" "$emmc_part_id" || return 1
-
-        if [ "$microsd_part_id" -ne "$emmc_part_id" ]; then
-            echo "$NAME: $part_name partition ID mismatch between eMMC and microSD card!" >&2
-            return 1
-        fi
-    done
-
-    microsd_system_start_sector=$(echo "$partition_names" | grep ":system$" | cut -d: -f2)
-    emmc_system_start_sector=$(getProperty "system_start_sector" "$PROP")
-
-    checkNumeric "$NAME" "microsd_system_start_sector" "$microsd_system_start_sector" || return 1
-    checkNumeric "$NAME" "emmc_system_start_sector" "$emmc_system_start_sector" || return 1
-
-    if [ "$microsd_system_start_sector" -ne "$emmc_system_start_sector" ]; then
-        echo "$NAME: system start sectors from eMMC and microSD card do not match!" >&2
+    if [ "$microsd_partition_names" != "$emmc_partition_names" ]; then
+        echo "$NAME: the partition layout of microSD card does not match that of eMMC!" >&2
         return 1
     fi
 

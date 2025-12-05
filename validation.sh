@@ -102,13 +102,10 @@ compareMaxSectors() {
 
 # Ensure target partitions are in correct order
 # system -> cache -> hidden -> userdata
-# Stores required partition IDs and sizes before cloning
 checkEmmcPartitionLayout() {
     local emmc_partition_table
     local partition_names
     local system_id cache_id hidden_id userdata_id last_id
-    local system_start_sector
-    local partition_count
 
     if ! emmcAvailable; then
         echo "$NAME: eMMC device not found: $DEV_BLOCK_EMMC" >&2
@@ -149,18 +146,6 @@ checkEmmcPartitionLayout() {
         return 1
     fi
 
-    partition_count=$(printf '%s\n' "$emmc_partition_table" | grep -E '^[[:space:]]*[0-9]+' | wc -l)
-    system_start_sector=$(echo "$partition_names" | grep ":system$" | cut -d: -f2)
-
-    checkNumeric "$NAME" "partition_count" "$partition_count" || return 1
-    checkNumeric "$NAME" "system_start_sector" "$system_start_sector" || return 1
-
-    updateProperty "emmc_partition_count" "$partition_count" "$PROP"
-    updateProperty "system_start_sector" "$system_start_sector" "$PROP"
-    updateProperty "system_partition_id" "$system_id" "$PROP"
-    updateProperty "cache_partition_id" "$cache_id" "$PROP"
-    updateProperty "hidden_partition_id" "$hidden_id" "$PROP"
-    updateProperty "userdata_partition_id" "$userdata_id" "$PROP"
     return 0
 }
 

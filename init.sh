@@ -57,11 +57,6 @@ generateProperties() {
     echo "microsd_size=0" >> "$PROP"
     echo "microsd_partition_count=0" >> "$PROP"
     echo "emmc_partition_count=0" >> "$PROP"
-    echo "system_start_sector=0" >> "$PROP"
-    echo "system_partition_id=0" >> "$PROP"
-    echo "cache_partition_id=0" >> "$PROP"
-    echo "hidden_partition_id=0" >> "$PROP"
-    echo "userdata_partition_id=0" >> "$PROP"
 
     chmod 0644 "$PROP"
     echo "init: properties generated successfully"
