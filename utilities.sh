@@ -60,7 +60,7 @@ checkNumeric() {
 calculateMicroSdSize() {
     local microsd_max_sectors
     local sectors
-	local result
+    local result
 
     if ! microSdCardAvailable; then
         echo "$NAME: microSD card not found: $DEV_BLOCK_MICROSD" >&2
@@ -72,7 +72,49 @@ calculateMicroSdSize() {
     result=$(awk -v sectors="$sectors" -v max_sectors="$microsd_max_sectors" \
         'BEGIN {printf "%.1f", (max_sectors * sectors) / (1024^3)}')
 
-    updateProperty "microsd_size" "$result" "$PROP"
+    updateProperty "microsd_total_size" "${result} GiB" "$PROP"
+    return 0
+}
+
+# Calculate target partition sizes from microSD card
+calculateMicroSdPartitionSizes() {
+    local microsd_partition_table
+    local partition_names
+    local sectors
+    local part_bytes part_id part_name part_sectors part_size
+
+    if ! microSdCardAvailable; then
+        echo "$NAME: microSD card not found: $DEV_BLOCK_MICROSD" >&2
+        return 1
+    fi
+
+    microsd_partition_table=$(sgdisk --print "$DEV_BLOCK_MICROSD" 2>/dev/null) || {
+        echo "$NAME: failed to read microSD card partition table" >&2
+        return 1
+    }
+
+    partition_names=$(printf '%s\n' "$microsd_partition_table" | awk '/^[[:space:]]*[0-9]+/ {print $1":"$7}')
+    sectors=$(blockdev --getss "$DEV_BLOCK_MICROSD")
+
+    for part_name in system cache hidden userdata vendor; do
+        part_id=$(echo "$partition_names" | grep ":$part_name$" | cut -d: -f1)
+        checkNumeric "$NAME" "${part_name}_id" "$part_id" || {
+            updateProperty "microsd_${part_name}_size" "0 Bytes" "$PROP"
+            continue
+        }
+        part_sectors=$(blockdev --getsz "${DEV_BLOCK_MICROSD}p${part_id}")
+        part_size=$(awk -v part_sectors="$part_sectors" -v sectors="$sectors" \
+            'BEGIN {
+                bytes = (part_sectors * sectors)
+                if (bytes < 1024)        printf "%.1f %s", bytes, "Bytes";
+                else if (bytes < 1024^2) printf "%.1f %s", bytes / 1024, "KiB";
+                else if (bytes < 1024^3) printf "%.1f %s", bytes / (1024^2), "MiB";
+                else if (bytes < 1024^4) printf "%.1f %s", bytes / (1024^3), "GiB";
+                else                     printf "%.1f %s", bytes / (1024^4), "TiB";
+            }')
+        updateProperty "microsd_${part_name}_size" "$part_size" "$PROP"
+    done
+
     return 0
 }
 
