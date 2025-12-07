@@ -59,7 +59,7 @@ checkNumeric() {
 # Calculate size of microSD card in gibibyte
 calculateMicroSdSize() {
     local microsd_max_sectors
-    local sectors
+    local sector_size
     local result
 
     if ! microSdCardAvailable; then
@@ -68,9 +68,9 @@ calculateMicroSdSize() {
     fi
 
     microsd_max_sectors=$(blockdev --getsz "$DEV_BLOCK_MICROSD")
-    sectors=$(blockdev --getss "$DEV_BLOCK_MICROSD")
-    result=$(awk -v sectors="$sectors" -v max_sectors="$microsd_max_sectors" \
-        'BEGIN {printf "%.1f", (max_sectors * sectors) / (1024^3)}')
+    sector_size=$(blockdev --getss "$DEV_BLOCK_MICROSD")
+    result=$(awk -v sector_size="$sector_size" -v max_sectors="$microsd_max_sectors" \
+        'BEGIN {printf "%.1f", (max_sectors * sector_size) / (1024^3)}')
 
     updateProperty "microsd_total_size" "${result} GiB" "$PROP"
     return 0
@@ -80,7 +80,7 @@ calculateMicroSdSize() {
 calculateMicroSdPartitionSizes() {
     local microsd_partition_table
     local partition_names
-    local sectors
+    local sector_size
     local part_bytes part_id part_name part_sectors part_size
 
     if ! microSdCardAvailable; then
@@ -94,7 +94,7 @@ calculateMicroSdPartitionSizes() {
     }
 
     partition_names=$(printf '%s\n' "$microsd_partition_table" | awk '/^[[:space:]]*[0-9]+/ {print $1":"$7}')
-    sectors=$(blockdev --getss "$DEV_BLOCK_MICROSD")
+    sector_size=$(blockdev --getss "$DEV_BLOCK_MICROSD")
 
     for part_name in system cache hidden userdata vendor; do
         part_id=$(echo "$partition_names" | grep ":$part_name$" | cut -d: -f1)
@@ -103,9 +103,9 @@ calculateMicroSdPartitionSizes() {
             continue
         }
         part_sectors=$(blockdev --getsz "${DEV_BLOCK_MICROSD}p${part_id}")
-        part_size=$(awk -v part_sectors="$part_sectors" -v sectors="$sectors" \
+        part_size=$(awk -v part_sectors="$part_sectors" -v sector_size="$sector_size" \
             'BEGIN {
-                bytes = (part_sectors * sectors)
+                bytes = (part_sectors * sector_size)
                 if (bytes < 1024)        printf "%.1f %s", bytes, "Bytes";
                 else if (bytes < 1024^2) printf "%.1f %s", bytes / 1024, "KiB";
                 else if (bytes < 1024^3) printf "%.1f %s", bytes / (1024^2), "MiB";
@@ -136,8 +136,12 @@ setPartitionCount() {
 projectProtoInstalled() {
     local microsd_partition_table
     local partition_names
-    local microsd_partition_count
-    local vendor_available
+    local system_id vendor_id
+    local system_bytes vendor_bytes
+
+    # Expected sizes in bytes
+    local EXPECT_SYSTEM_SIZE=$((1024 * 1024 * 3584))  # 3.5 GiB
+    local EXPECT_VENDOR_SIZE=$((1024 * 1024 * 700))   # 700 MiB
 
     if ! microSdCardAvailable; then
         echo "$NAME: microSD card not found: $DEV_BLOCK_MICROSD" >&2
@@ -149,19 +153,30 @@ projectProtoInstalled() {
         return 1
     }
 
-    partition_names=$(printf '%s\n' "$microsd_partition_table" | awk '/^[[:space:]]*[0-9]+/ {print $7}')
-    microsd_partition_count=$(printf '%s\n' "$partition_names" | wc -l)
-    vendor_available=$(printf '%s\n' "$partition_names" | grep "vendor")
+    partition_names=$(printf '%s\n' "$microsd_partition_table" | awk '/^[[:space:]]*[0-9]+/ {print $1":"$7}')
+    system_id=$(echo "$partition_names" | grep ":system$" | cut -d: -f1)
+    vendor_id=$(echo "$partition_names" | grep ":vendor$" | cut -d: -f1)
 
-    checkNumeric "$NAME" "microsd_partition_count" "$microsd_partition_count" || return 1
+    checkNumeric "$NAME" "system_id" "$system_id" || {
+        echo "$NAME: ProjectProto not installed (system)" >&2
+        return 1
+    }
 
-    if [ "$microsd_partition_count" -eq 29 ] && [ -n "$vendor_available" ]; then
-        echo "$NAME: ProjectProto is installed"
-        return 0
+    checkNumeric "$NAME" "vendor_id" "$vendor_id" || {
+        echo "$NAME: ProjectProto not installed (vendor)" >&2
+        return 1
+    }
+
+    system_bytes=$(blockdev --getsize64 "${DEV_BLOCK_MICROSD}p${system_id}")
+    vendor_bytes=$(blockdev --getsize64 "${DEV_BLOCK_MICROSD}p${vendor_id}")
+
+    if [ "$system_bytes" -ne "$EXPECT_SYSTEM_SIZE" ] || [ "$vendor_bytes" -ne "$EXPECT_VENDOR_SIZE" ]; then
+        echo "$NAME: ProjectProto not installed (size mismatch)" >&2
+        return 1
     fi
 
-    echo "$NAME: ProjectProto not installed" >&2
-    return 1
+    echo "$NAME: ProjectProto is installed"
+    return 0
 }
 
 {
