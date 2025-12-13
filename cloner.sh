@@ -83,6 +83,11 @@ cloneEmmcToMicroSd() {
 
     sleep 2 # ensure caches are cleaned up and kernel ready to read new table
 
+    if ! reReadMicroSdPartitionTable; then
+        echo "$NAME: failed to re-read partition table from microSD card! Partitions still mounted?" >&2
+        return 1
+    fi
+
     echo "$NAME: checking the partition layout on microSD card after cloning"
 
     if _checkMicroSdPartitionLayout; then

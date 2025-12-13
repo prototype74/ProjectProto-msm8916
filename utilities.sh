@@ -179,6 +179,44 @@ projectProtoInstalled() {
     return 0
 }
 
+isMicroSdMounted() {
+    grep -q "^$DEV_BLOCK_MICROSD" /proc/mounts
+}
+
+unmountMicroSdPartitions() {
+    local mountpoints mp
+
+    mountpoints=$(grep "^$DEV_BLOCK_MICROSD" /proc/mounts | awk '{print $2}')
+
+    if [ -z "$mountpoints" ]; then
+        return 0
+    fi
+
+    echo "$NAME: unmounting partitions from microSD card"
+
+    for mp in $mountpoints; do
+        if ! umount "$mp"; then
+            echo "$NAME: failed to unmount $mp"
+            return 1
+        fi
+    done
+
+    echo "$NAME: unmounted all partitions from microSD card"
+    return 0
+}
+
+reReadMicroSdPartitionTable() {
+    if ! blockdev --rereadpt "$DEV_BLOCK_MICROSD" 2>/dev/null; then
+        unmountMicroSdPartitions
+        # Another attempt to re-read the partition table
+        if ! blockdev --rereadpt "$DEV_BLOCK_MICROSD"; then
+            return 1
+        fi
+    fi
+
+    return 0
+}
+
 {
     if type "$1" >/dev/null 2>&1; then
         "$1"

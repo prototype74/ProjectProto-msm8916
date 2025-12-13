@@ -159,6 +159,13 @@ repartitionMicroSdCard() {
     }
     echo "$NAME: vendor partition created (ID: $vendor_id)"
 
+    sleep 2
+
+    if ! reReadMicroSdPartitionTable; then
+        echo "$NAME: failed to re-read partition table from microSD card!" >&2
+        return 1
+    fi
+
     echo "$NAME: repartition microSD card finished!"
     return 0
 }
