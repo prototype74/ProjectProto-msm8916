@@ -170,9 +170,66 @@ repartitionMicroSdCard() {
     return 0
 }
 
+# Formats a specified partition on microSD card as an EXT4 filesystem.
+# Supported partitions are system, cache, hidden, userdata and vendor.
+formatMicroSdCardPartitionAsEXT4() {
+    local part_name="$1"
+    local microsd_partition_table partition_names
+    local target_part_id target_part_size
+    local block_count block_path
+
+    local PARTITIONS="system cache hidden userdata vendor"
+    local BLOCK_SIZE=4096
+    local USERDATA_OFFSET=8 # reserved for 64-bit crypto footer (encryption)
+
+    if ! microSdCardAvailable; then
+        echo "$NAME: microSD card not found: $DEV_BLOCK_MICROSD" >&2
+        return 1
+    fi
+
+    if ! printf '%s\n' $PARTITIONS | grep -qxF "$part_name"; then
+        echo "$NAME: invalid partition name: $part_name" >&2
+        return 1
+    fi
+
+    microsd_partition_table=$(sgdisk --print "$DEV_BLOCK_MICROSD" 2>/dev/null) || {
+        echo "$NAME: failed to read microSD card partition table" >&2
+        return 1
+    }
+
+    partition_names=$(printf '%s\n' "$microsd_partition_table" | awk '/^[[:space:]]*[0-9]+/ {print $1":"$7}')
+    target_part_id=$(echo "$partition_names" | grep ":${part_name}$" | cut -d: -f1)
+
+    checkNumeric "$NAME" "${part_name}_id" "$target_part_id" || return 1
+
+    block_path="${DEV_BLOCK_MICROSD}p${target_part_id}"
+    target_part_size=$(blockdev --getsize64 "$block_path") || {
+        printf "$NAME: failed to get partition size from %s (%s)\n" "$part_name" "$block_path" >&2
+        return 1
+    }
+    block_count=$(awk -v bytes="$target_part_size" -v bs="$BLOCK_SIZE" 'BEGIN {printf "%d", bytes / bs}')
+
+    if [ "$part_name" = "userdata" ]; then
+        block_count=$(( block_count - USERDATA_OFFSET ))
+    fi
+
+    echo "$NAME: formatting $part_name partition"
+
+    # Force is used to supress interactive prompts. While this is not the safest approach in general,
+    # the block size and target partition are determined beforehand, so this should not pose a serious risk.
+    # The only requirement is that the target partition must exist and unmounted before formatting.
+    mke2fs -F -t ext4 -b "$BLOCK_SIZE" "$block_path" "$block_count" || {
+        echo "$NAME: failed to format $part_name ($block_path)!" >&2
+        return 1
+    }
+
+    echo "$NAME: formatted $part_name successfully!"
+    return 0
+}
+
 {
     if type "$1" >/dev/null 2>&1; then
-        "$1"
+        "$1" "$2"
         exit $?
     else
         echo "Function $1 not found" >&2
