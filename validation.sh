@@ -117,8 +117,8 @@ checkEmmcPartitionLayout() {
         return 1
     }
 
-    # Extract id, start sector and name e.g. 25:393216:system
-    partition_names=$(printf '%s\n' "$emmc_partition_table" | awk '/^[[:space:]]*[0-9]+/ {print $1":"$2":"$7}')
+    # Extract id and partition name e.g. 25:system
+    partition_names=$(printf '%s\n' "$emmc_partition_table" | awk '/^[[:space:]]*[0-9]+/ {print $1":"$7}')
 
     system_id=$(echo "$partition_names" | grep ":system$" | cut -d: -f1)
     cache_id=$(echo "$partition_names" | grep ":cache$" | cut -d: -f1)

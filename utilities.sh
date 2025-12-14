@@ -179,10 +179,12 @@ projectProtoInstalled() {
     return 0
 }
 
+# Check whether any partition on microSD card is currently mounted
 isMicroSdMounted() {
     grep -q "^$DEV_BLOCK_MICROSD" /proc/mounts
 }
 
+# Unmount all partitions on microSD card if any are mounted
 unmountMicroSdPartitions() {
     local mountpoints mp
 
@@ -205,6 +207,8 @@ unmountMicroSdPartitions() {
     return 0
 }
 
+# Re-read the microSD card partition table. This is required if partitions on
+# microSD card were modified (e.g. by sgdisk).
 reReadMicroSdPartitionTable() {
     if ! blockdev --rereadpt "$DEV_BLOCK_MICROSD" 2>/dev/null; then
         unmountMicroSdPartitions
