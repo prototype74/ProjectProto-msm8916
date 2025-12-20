@@ -184,6 +184,67 @@ isMicroSdMounted() {
     grep -q "^$DEV_BLOCK_MICROSD" /proc/mounts
 }
 
+# Mount a specified partition on microSD card.
+# Supported partitions are system, cache, hidden, userdata and vendor.
+# The partition is mounted to /<part_name>_extsd (userdata to /data_extsd).
+mountMicroSdCardPartition() {
+    local part_name="$1"
+    local microsd_partition_table partition_names
+    local target_part_id
+    local block_path
+    local mount_dir_name
+
+    local PARTITIONS="system cache hidden userdata vendor"
+
+    if ! microSdCardAvailable; then
+        echo "$NAME: microSD card not found: $DEV_BLOCK_MICROSD" >&2
+        return 1
+    fi
+
+    if ! printf '%s\n' $PARTITIONS | grep -qxF "$part_name"; then
+        echo "$NAME: invalid partition name: $part_name" >&2
+        return 1
+    fi
+
+    microsd_partition_table=$(sgdisk --print "$DEV_BLOCK_MICROSD" 2>/dev/null) || {
+        echo "$NAME: failed to read microSD card partition table" >&2
+        return 1
+    }
+
+    partition_names=$(printf '%s\n' "$microsd_partition_table" | awk '/^[[:space:]]*[0-9]+/ {print $1":"$7}')
+    target_part_id=$(echo "$partition_names" | grep ":${part_name}$" | cut -d: -f1)
+
+    checkNumeric "$NAME" "${part_name}_id" "$target_part_id" || return 1
+
+    block_path="${DEV_BLOCK_MICROSD}p${target_part_id}"
+
+    if [ "$part_name" = "userdata" ]; then
+        mount_dir_name="/data_extsd"
+    else
+        mount_dir_name="/${part_name}_extsd"
+    fi
+
+    if grep -q "^$block_path $mount_dir_name[[:space:]]" /proc/mounts; then
+        echo "$NAME: $block_path already mounted on $mount_dir_name"
+        return 0
+    fi
+
+    if ! [ -d "$mount_dir_name" ]; then
+        mkdir -p "$mount_dir_name" || {
+            echo "$NAME: failed to create directory '$mount_dir_name'" >&2
+            return 1;
+        }
+    fi
+
+    mount "$block_path" "$mount_dir_name" || {
+        echo "$NAME: failed to mount $block_path as $mount_dir_name" >&2
+        return 1
+    }
+
+    echo "$NAME: $block_path mounted as $mount_dir_name"
+    return 0
+}
+
 # Unmount all partitions on microSD card if any are mounted
 unmountMicroSdPartitions() {
     local mountpoints mp
@@ -223,7 +284,7 @@ reReadMicroSdPartitionTable() {
 
 {
     if type "$1" >/dev/null 2>&1; then
-        "$1"
+        "$1" "$2"
         exit $?
     else
         echo "Function $1 not found" >&2
