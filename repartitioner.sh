@@ -23,7 +23,7 @@
 source /tmp/scripts/constants.sh  # import constants script
 source /tmp/scripts/utilities.sh  # import utilities script
 
-NAME="repartitioner"
+readonly NAME="repartitioner"
 
 # Repartition microSD card after cloning:
 # - enlarge system partition

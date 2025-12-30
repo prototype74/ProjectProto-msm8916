@@ -24,7 +24,7 @@ source /tmp/scripts/constants.sh  # import constants script
 source /tmp/scripts/property_lite.sh  # import property_lite script
 source /tmp/scripts/utilities.sh  # import utilities script
 
-NAME="validation"
+readonly NAME="validation"
 
 # Check for supported device
 checkDevice() {

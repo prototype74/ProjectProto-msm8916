@@ -23,7 +23,7 @@
 source /tmp/scripts/constants.sh  # import constants script
 source /tmp/scripts/property_lite.sh  # import property_lite script
 
-NAME="utilities"
+readonly NAME="utilities"
 
 # Check if eMMC is available
 emmcAvailable() {

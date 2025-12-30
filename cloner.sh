@@ -23,7 +23,7 @@
 source /tmp/scripts/constants.sh  # import constants script
 source /tmp/scripts/utilities.sh  # import utilities script
 
-NAME="cloner"
+readonly NAME="cloner"
 
 # Ensure the partition layouts between eMMC and microSD card are
 # identical after clone
