@@ -22,6 +22,8 @@
 
 source /tmp/scripts/constants.sh  # import constants script
 
+readonly NAME="init"
+
 # Print relevant debugging information
 printDeviceInformation() {
     echo "Device information:"
@@ -37,22 +39,25 @@ printDeviceInformation() {
 
 # Generate init properties
 generateProperties() {
-    local current_date
-    current_date=$(date +"%Y-%m-%d %H:%M:%S")
+    local CURRENT_DATE=$(date +"%Y-%m-%d %H:%M:%S")
 
     if [ -f "$PROP" ]; then
-        rm -f "$PROP" && echo "init: removed old properties"
+        rm -f "$PROP" || {
+            echo "$NAME: failed to remove old properties" >&2
+            return 1
+        }
+        echo "$NAME: removed old properties"
     fi
 
     if ! touch "$PROP"; then
-        echo "init: unable to generate properties" >&2
-        exit 1
+        echo "$NAME: unable to generate properties" >&2
+        return 1
     fi
 
-    echo "init: generating properties"
+    echo "$NAME: generating properties"
 
     echo "#Auto generated properties file" >> "$PROP"
-    echo "#$current_date" >> "$PROP"
+    echo "#$CURRENT_DATE" >> "$PROP"
     echo "device_variant=unknown" >> "$PROP"
     echo "microsd_total_size=0" >> "$PROP"
     echo "microsd_partition_count=0" >> "$PROP"
@@ -64,13 +69,16 @@ generateProperties() {
     echo "microsd_vendor_size=0" >> "$PROP"
 
     chmod 0644 "$PROP"
-    echo "init: properties generated successfully"
+    echo "$NAME: properties generated successfully"
+    return 0
 }
 
 # MAIN FUNCTION
 {
-    echo "start init environment"
+    echo "$NAME: start init environment"
     printDeviceInformation
-    generateProperties
+    if ! generateProperties; then
+        exit 1
+    fi
     exit 0
 }
