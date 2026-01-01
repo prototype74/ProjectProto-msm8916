@@ -1,6 +1,6 @@
 #!/sbin/sh
 #
-# Copyright (c) 2025 prototype74
+# Copyright (c) 2025-2026 prototype74
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal

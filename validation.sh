@@ -1,6 +1,6 @@
 #!/sbin/sh
 #
-# Copyright (c) 2025 prototype74
+# Copyright (c) 2025-2026 prototype74
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -20,9 +20,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-source /tmp/scripts/constants.sh  # import constants script
+source /tmp/scripts/helpers.sh  # import helpers script
 source /tmp/scripts/property_lite.sh  # import property_lite script
-source /tmp/scripts/utilities.sh  # import utilities script
 
 readonly NAME="validation"
 
