@@ -60,8 +60,6 @@ generateProperties() {
     echo "#$CURRENT_DATE" >> "$PROP"
     echo "device_variant=unknown" >> "$PROP"
     echo "microsd_total_size=0" >> "$PROP"
-    echo "microsd_partition_count=0" >> "$PROP"
-    echo "emmc_partition_count=0" >> "$PROP"
     echo "microsd_system_size=0" >> "$PROP"
     echo "microsd_cache_size=0" >> "$PROP"
     echo "microsd_hidden_size=0" >> "$PROP"

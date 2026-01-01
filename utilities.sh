@@ -87,20 +87,6 @@ calculateMicroSdPartitionSizes() {
     return 0
 }
 
-# Set partition count available on microSD card
-setPartitionCount() {
-    local count
-
-    if ! microSdCardAvailable; then
-        echo "$NAME: microSD card not found: $DEV_BLOCK_MICROSD" >&2
-        return 1
-    fi
-
-    count=$(sgdisk --print "$DEV_BLOCK_MICROSD" | grep -E '^[[:space:]]*[0-9]+' | wc -l)
-    updateProperty "microsd_partition_count" "$count" "$PROP"
-    return 0
-}
-
 # Check if ProjectProto is installed on microSD card
 projectProtoInstalled() {
     local microsd_partition_table
