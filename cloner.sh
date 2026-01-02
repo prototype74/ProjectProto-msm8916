@@ -75,8 +75,13 @@ cloneEmmcToMicroSd() {
 
     echo "$NAME: cloning eMMC to microSD card started!"
 
-    dd if="$DEV_BLOCK_EMMC" of="$DEV_BLOCK_MICROSD" bs=4M conv=fsync || {
+    dd if="$DEV_BLOCK_EMMC" of="$DEV_BLOCK_MICROSD" bs=4m || {
         echo "$NAME: cloning process failed!" >&2
+        return 1
+    }
+
+    blockdev --flushbufs "$DEV_BLOCK_MICROSD" || {
+        echo "$NAME: failed to flush write buffers to microSD card!" >&2
         return 1
     }
 
