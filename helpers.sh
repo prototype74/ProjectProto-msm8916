@@ -69,7 +69,7 @@ unmountMicroSdPartitions() {
 
     for mp in $mountpoints; do
         if ! umount "$mp"; then
-            echo "$NAME: failed to unmount $mp"
+            echo "$NAME: failed to unmount $mp" >&2
             return 1
         fi
     done

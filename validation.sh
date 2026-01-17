@@ -65,7 +65,7 @@ checkDevice() {
             device="j5x3g"
             ;;
         *)
-            echo "$NAME: unsupported device: $bootloader"
+            echo "$NAME: unsupported device: $bootloader" >&2
             return 1
             ;;
     esac
@@ -162,7 +162,7 @@ checkEmmcPartitionLayout() {
     checkNumeric "$NAME" "last_id" "$last_id" || return 1
 
     if [ "$userdata_id" -lt "$last_id" ]; then
-        echo "$NAME: additional partition(s) found after userdata!"
+        echo "$NAME: additional partition(s) found after userdata!" >&2
         return 1
     fi
 
