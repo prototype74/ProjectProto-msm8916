@@ -25,6 +25,15 @@ source /tmp/scripts/property_lite.sh  # import property_lite script
 
 readonly NAME="validation"
 
+# Checks whether the required tools are provided by recovery
+checkRequiredTools() {
+    command -v dd sgdisk blockdev awk mke2fs || {
+        echo "$NAME: one or more required tools are missing" >&2
+        return 1
+    }
+    return 0
+}
+
 # Check for supported device
 checkDevice() {
     local device="unknown"
