@@ -82,7 +82,7 @@ With these changes applied, the boot process proceeds as follows:
 
 ### Boot process with a corrupted or failed eMMC
 
-If the eMMC becomes corrupted or fails for any reason, the MSM8916 may attempt to boot from the microSD card instead. Since ProjectProto clones all eMMC partitions to the microSD card, the MSM8916 can load the Secondary Bootloader (SBL) and the Android Bootloader (ABOOT) from the microSD card even if the eMMC has failed.:
+If the eMMC becomes corrupted or fails for any reason, the MSM8916 may attempt to boot from the microSD card instead. Since ProjectProto clones all eMMC partitions to the microSD card, the MSM8916 can load the Secondary Bootloader (SBL) and the Android Bootloader (ABOOT) from the microSD card even if the eMMC has failed:
 
 ![failed_emmc](https://github.com/user-attachments/assets/c23ea974-aa5b-43a2-b308-332d6ccc2eb3)
 
@@ -94,6 +94,8 @@ Therefore, ROM developers are advised to install the kernel image on both the eM
 
 The following devices are supported by ProjectProto:
 
+- <b>Galaxy A3 2015</b>: SM-A300FU, SM-A300Y
+- <b>Galaxy Ace 4</b>: SM-G357FZ
 - <b>Galaxy J5 2015</b>: SM-J500F, SM-J500FN, SM-J500G, SM-J500H, SM-J500M, SM-J500N0, SM-J500Y
 - <b>Galaxy J5 2016</b>: SM-J510F, SM-J510FN, SM-J510FQ, SM-J510GN, SM-J510H, SM-J510K, SM-J510L, SM-J510MN, SM-J510S, SM-J510UN
 

@@ -44,24 +44,29 @@ checkDevice() {
     bootloader=$(getprop ro.boot.bootloader)
 
     case "$bootloader" in
+        # Galaxy A3 2015
+        "A300FU"*|"A300YD"*)
+            device="a3ulte"
+            ;;
+        # Galaxy Ace 4
+        "G357FZ"*)
+            device="heatqlte"
+            ;;
+        # Galaxy J5 2015
         "J500FN"*)
-            # Galaxy J5 2015 LTE + NFC
             device="j5nlte"
             ;;
         "J500F"*|"J500G"*|"J500M"*|"J500N0"*|"J500Y"*)
-            # Galaxy J5 2015 LTE
             device="j5lte"
             ;;
         "J500H"*)
-            # Galaxy J5 2015 3G
             device="j53g"
             ;;
+        # Galaxy J5 2016
         "J510F"*|"J510GN"*|"J510K"*|"J510L"*|"J510MN"*|"J510S"*|"J510UN"*)
-            # Galaxy J5 2016 LTE
             device="j5xnlte"
             ;;
         "J510H"*)
-            # Galaxy J5 2016 3G
             device="j5x3g"
             ;;
         *)
