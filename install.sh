@@ -154,15 +154,15 @@ fi
 print_message "-- Mounting target partitions"
 for partition in system cache hidden userdata vendor; do
     if [ "$partition" = "userdata" ]; then
-        mount_point="/data_extsd"
+        mount_point="/data_sdc2"
     else
-        mount_point="/${partition}_extsd"
+        mount_point="/${partition}_sdc2"
     fi
 
     if ! /tmp/scripts/utilities.sh mountMicroSdCardPartition "$partition" > /dev/null; then
-        print_message "!! Failed to mount $partition partition from microSD card" $YELLOW
+        print_message "   ! Failed to mount $partition partition from microSD card" $YELLOW
     else
-        print_message "-- Mounted $partition partition as $mount_point"
+        print_message "   - Mounted $partition partition as $mount_point"
     fi
 done
 print_message " "

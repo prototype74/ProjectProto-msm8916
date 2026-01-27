@@ -141,7 +141,7 @@ isMicroSdMounted() {
 
 # Mount a specified partition on microSD card.
 # Supported partitions are system, cache, hidden, userdata and vendor.
-# The partition is mounted to /<part_name>_extsd (userdata to /data_extsd).
+# The partition is mounted to /<part_name>_sdc2 (userdata to /data_sdc2).
 mountMicroSdCardPartition() {
     local part_name="$1"
     local microsd_partition_table partition_names
@@ -174,9 +174,9 @@ mountMicroSdCardPartition() {
     block_path="${DEV_BLOCK_MICROSD}p${target_part_id}"
 
     if [ "$part_name" = "userdata" ]; then
-        mount_dir_name="/data_extsd"
+        mount_dir_name="/data_sdc2"
     else
-        mount_dir_name="/${part_name}_extsd"
+        mount_dir_name="/${part_name}_sdc2"
     fi
 
     if grep -q "^$block_path $mount_dir_name[[:space:]]" /proc/mounts; then
