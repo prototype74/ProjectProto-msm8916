@@ -179,7 +179,7 @@ formatMicroSdCardPartitionAsEXT4() {
 
     local PARTITIONS="system cache hidden userdata vendor"
     local BLOCK_SIZE=4096
-    local USERDATA_OFFSET=8 # reserved for 64-bit crypto footer (encryption)
+    local USERDATA_OFFSET=5 # reserved for 64-bit crypto footer (encryption)
 
     if ! microSdCardAvailable; then
         echo "$NAME: microSD card not found: $DEV_BLOCK_MICROSD" >&2
