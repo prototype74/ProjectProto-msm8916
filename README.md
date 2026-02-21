@@ -75,7 +75,7 @@ The boot process depends on whether the device has a functional eMMC. If this is
 
 With these changes applied, the boot process proceeds as follows:
 
-![working_emmc](https://github.com/user-attachments/assets/7be8d2e6-1b58-43cf-a832-495cca6e152b)
+![working_emmc](assets/working_emmc.jpg)
 
 > [!WARNING]
 > It is also important to remove the microSD card from the Android fstab, as otherwise the Android ramdisk may attempt to mount the first partition (APNHLOS) as external storage, incorrectly treating it as usable storage.
@@ -84,7 +84,7 @@ With these changes applied, the boot process proceeds as follows:
 
 If the eMMC becomes corrupted or fails for any reason, the MSM8916 may attempt to boot from the microSD card instead. Since ProjectProto clones all eMMC partitions to the microSD card, the MSM8916 can load the Secondary Bootloader (SBL) and the Android Bootloader (ABOOT) from the microSD card even if the eMMC has failed:
 
-![failed_emmc](https://github.com/user-attachments/assets/c23ea974-aa5b-43a2-b308-332d6ccc2eb3)
+![failed_emmc](assets/failed_emmc.jpg)
 
 This means that ProjectProto may prevent a complete device failure that would otherwise leave the device stuck in EDL mode (QDLoader 9008). However, it is not guaranteed that the Primary Bootloader (PBL) will fall back to the microSD card, as this highly depends on the boot configuration implemented in the PBL.
 
