@@ -1,0 +1,212 @@
+#!/sbin/sh
+#
+# Copyright (c) 2025-2026 prototype74
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+# Assign command-line arguments and define global constants
+readonly API_VERSION="$1"
+readonly FD_ID="$2"
+readonly ZIP_FILE="$3"
+readonly OUTPUT_FD="/proc/self/fd/$FD_ID"
+readonly TMP_SCRIPTS="/tmp/scripts"
+readonly PARTITIONS="system cache hidden userdata vendor"
+
+set -e
+
+ui_print() {
+    echo -e "ui_print $1\nui_print" > "$OUTPUT_FD"
+}
+
+progress() {
+    echo "progress $1 $2" > "$OUTPUT_FD"
+}
+
+set_progress() {
+    echo "set_progress $1" > "$OUTPUT_FD"
+}
+
+clean_up() {
+    if [ -d "$TMP_SCRIPTS" ]; then
+        rm -rf "$TMP_SCRIPTS" || {
+            echo "Failed to remove scripts directory" >&2
+        }
+    fi
+}
+
+abort() {
+    local msg="$1"
+    local exit_code="${2:-1}"
+
+    clean_up
+    ui_print "$msg"
+    ui_print " "
+    sleep 0.5
+    exit "$exit_code"
+}
+
+run() {
+    local module="$1"
+    local script
+
+    if [ -z "$module" ]; then
+        echo "run: no module specified" >&2
+        return 2
+    fi
+
+    shift
+
+    script="$TMP_SCRIPTS/${module}.sh"
+
+    if [ ! -f "$script" ]; then
+        echo "run: module '$module' not found" >&2
+        return 127
+    fi
+
+    "$script" "$@"
+}
+
+# Extract script files to /tmp/scripts
+mkdir -p "$TMP_SCRIPTS" || abort "Failed to create temporary scripts directory"
+# awk: Length:Date:Time:Name
+unzip -l "$ZIP_FILE" | awk '/^[[:space:]]*[0-9]+/ {print $4}' \
+| grep '^scripts/.*\.sh$' \
+| while read -r file; do
+    unzip -o "$ZIP_FILE" "$file" -d "/tmp" || abort "Failed to extract script file: $file"
+done
+chmod -R 0755 "$TMP_SCRIPTS" || abort "Failed to set scripts permissions"
+
+source $TMP_SCRIPTS/constants.sh
+source $TMP_SCRIPTS/property_lite.sh
+progress 1.00 0
+
+ui_print " "
+ui_print "ProjectProto - eMMC cloner and repartitioner"
+ui_print "for selected Galaxy MSM8916 devices"
+ui_print "**********************************************"
+ui_print "Do not remove your microSD card!"
+ui_print " "
+
+run init || abort "Failed to initialize environment" 255
+run utilities emmcAvailable || abort "eMMC device not available" 255
+run validation checkRequiredTools || abort "Recovery does not provide required tools" 127
+
+# VALIDATION
+ui_print "· Validation"
+ui_print "-- Checking for device compatibility"
+run validation checkDevice || abort "!! Unsupported device. Aborting..." 7
+ui_print "-- $(getProperty device_variant $PROP) detected"
+set_progress 0.05
+
+ui_print "-- Checking microSD card"
+run utilities microSdCardAvailable || abort "!! No microSD card detected" 7
+set_progress 0.06
+
+run validation compareMaxSectors || abort "!! Insufficient space on microSD card" 7
+set_progress 0.07
+
+if run utilities projectProtoInstalled; then
+    ui_print " "
+    ui_print "ProjectProto is already installed"
+    ui_print " "
+    exit 0
+fi
+set_progress 0.08
+
+run utilities calculateMicroSdSize
+ui_print "-- microSD card size: $(getProperty microsd_total_size $PROP)"
+set_progress 0.09
+
+ui_print "-- Checking eMMC partition layout"
+run validation checkEmmcPartitionLayout || abort "!! Partition layout does not meet requirements" 7
+ui_print "-- Validation completed!"
+set_progress 0.12
+ui_print " "
+
+# CLONING MEMORY
+ui_print "· Cloner"
+ui_print "-- Unmounting microSD partitions"
+run utilities unmountMicroSdPartitions || abort "!! Failed to unmount microSD partitions"
+set_progress 0.13
+
+ui_print "-- Cloning eMMC to microSD. This may take a while..."
+run cloner cloneEmmcToMicroSd || abort "!! FATAL: Cloning process failed"
+ui_print "-- eMMC cloned to microSD successfully!"
+set_progress 0.70
+ui_print " "
+
+# REPARTITIONER
+ui_print "· Repartitioner"
+ui_print "-- Repartitioning microSD card"
+run repartitioner repartitionMicroSdCard || abort "!! FATAL: Failed to repartition microSD card"
+set_progress 0.80
+
+ui_print "-- Formatting target partitions as EXT4 on microSD card"
+for partition in $PARTITIONS; do
+    ui_print "   - Formatting $partition"
+    run repartitioner formatMicroSdCardPartitionAsEXT4 "$partition" || \
+        abort "!! Failed to format $partition partition on microSD card"
+done
+set_progress 0.85
+
+ui_print "-- Re-reading partition table from microSD card"
+run utilities reReadMicroSdPartitionTable || abort "!! Failed to re-read partition table"
+ui_print "-- microSD card repartitioned successfully!"
+set_progress 0.86
+ui_print " "
+
+# MISC
+ui_print "· Miscellaneous"
+ui_print "-- Calculating target partition sizes on microSD card"
+if run utilities calculateMicroSdPartitionSizes; then
+    ui_print "   - System: $(getProperty microsd_system_size $PROP)"
+    ui_print "   - Cache: $(getProperty microsd_cache_size $PROP)"
+    ui_print "   - Hidden: $(getProperty microsd_hidden_size $PROP)"
+    ui_print "   - Userdata: $(getProperty microsd_userdata_size $PROP)"
+    ui_print "   - Vendor: $(getProperty microsd_vendor_size $PROP)"
+fi
+set_progress 0.87
+
+ui_print "-- Mounting target partitions"
+for partition in $PARTITIONS; do
+    if [ "$partition" = "userdata" ]; then
+        mount_point="/data_sdc2"
+    else
+        mount_point="/${partition}_sdc2"
+    fi
+
+    if ! run utilities mountMicroSdCardPartition "$partition"; then
+        ui_print "   ! Failed to mount $partition partition from microSD card"
+    else
+        ui_print "   - Mounted $partition partition as $mount_point"
+    fi
+done
+set_progress 0.92
+ui_print " "
+
+if run utilities projectProtoInstalled; then
+    ui_print "ProjectProto installed successfully!"
+else
+    ui_print "ProjectProto not properly installed!"
+fi
+ui_print " "
+set_progress 0.93
+
+clean_up
+set_progress 1.00
