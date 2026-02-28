@@ -139,6 +139,7 @@ if run utilities projectProtoInstalled; then
     ui_print " "
     ui_print "ProjectProto is already installed"
     ui_print " "
+    clean_up
     exit 0
 fi
 set_progress 0.08
