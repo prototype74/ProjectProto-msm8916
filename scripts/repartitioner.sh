@@ -179,7 +179,6 @@ formatMicroSdCardPartitionAsEXT4() {
     local target_part_id target_part_size
     local block_count block_path
 
-    local PARTITIONS="system cache hidden userdata vendor"
     local BLOCK_SIZE=4096
     local USERDATA_OFFSET=5 # reserved for 64-bit crypto footer (encryption)
 

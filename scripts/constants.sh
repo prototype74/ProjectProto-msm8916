@@ -24,14 +24,16 @@
 # Global constants
 # =============================================================================
 # PROP ......................... Path to installer property file
+# PARTITIONS ................... Target partition order for iterations
 # DEV_BLOCK_EMMC ............... Internal storage block device
 # DEV_BLOCK_MICROSD ............ microSD card block device
 # DEV_BLOCK_PLATFORM_EMMC ...... Platform path to internal storage device
 # DEV_BLOCK_PLATFORM_MICROSD ... Platform path to microSD card device
 # DO NOT EDIT DEV BLOCK PATHS!
 # =============================================================================
-readonly PROP=/tmp/scripts/installer.prop
-readonly DEV_BLOCK_EMMC=/dev/block/mmcblk0
-readonly DEV_BLOCK_MICROSD=/dev/block/mmcblk1
-readonly DEV_BLOCK_PLATFORM_EMMC=/dev/block/platform/soc.0/7824900.sdhci
-readonly DEV_BLOCK_PLATFORM_MICROSD=/dev/block/platform/soc.0/7864900.sdhci
+readonly PROP="/tmp/scripts/installer.prop"
+readonly PARTITIONS="system cache hidden userdata vendor"
+readonly DEV_BLOCK_EMMC="/dev/block/mmcblk0"
+readonly DEV_BLOCK_MICROSD="/dev/block/mmcblk1"
+readonly DEV_BLOCK_PLATFORM_EMMC="/dev/block/platform/soc.0/7824900.sdhci"
+readonly DEV_BLOCK_PLATFORM_MICROSD="/dev/block/platform/soc.0/7864900.sdhci"

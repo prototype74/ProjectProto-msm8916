@@ -22,7 +22,6 @@
 
 readonly TMP_SCRIPTS="/tmp/scripts"
 readonly LOG_FILE="/tmp/ProjectProto.log"
-readonly PARTITIONS="system cache hidden userdata vendor"
 readonly GREEN='\033[1;32m'
 readonly YELLOW='\033[1;33m'
 readonly RED='\033[1;31m'

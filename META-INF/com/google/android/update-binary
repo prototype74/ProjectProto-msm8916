@@ -27,7 +27,6 @@ readonly ZIP_FILE="$3"
 readonly OUTPUT_FD="/proc/self/fd/$FD_ID"
 readonly LOG_FILE="/tmp/ProjectProto.log"
 readonly TMP_SCRIPTS="/tmp/scripts"
-readonly PARTITIONS="system cache hidden userdata vendor"
 
 set -e
 

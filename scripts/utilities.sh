@@ -65,7 +65,7 @@ calculateMicroSdPartitionSizes() {
     partition_names=$(printf '%s\n' "$microsd_partition_table" | awk '/^[[:space:]]*[0-9]+/ {print $1":"$7}')
     sector_size=$(blockdev --getss "$DEV_BLOCK_MICROSD")
 
-    for part_name in system cache hidden userdata vendor; do
+    for part_name in $PARTITIONS; do
         if [ "$part_name" = "system" ]; then
             part_id=$(echo "$partition_names" | grep ":SYSTEM$" | cut -d: -f1)
         else
@@ -152,8 +152,6 @@ mountMicroSdCardPartition() {
     local target_part_id
     local block_path
     local mount_dir_name
-
-    local PARTITIONS="system cache hidden userdata vendor"
 
     if ! microSdCardAvailable; then
         echo "$NAME: microSD card not found: $DEV_BLOCK_MICROSD" >&2
