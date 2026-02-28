@@ -25,7 +25,7 @@ source /tmp/scripts/helpers.sh  # import helpers script
 readonly NAME="repartitioner"
 
 # Repartition microSD card after cloning:
-# - enlarge system partition
+# - enlarge and rename system partition
 # - keep original sizes for cache and hidden
 # - assign remaining space to userdata
 # - delete and recreate system/cache/hidden/userdata partitions
@@ -113,8 +113,10 @@ repartitionMicroSdCard() {
 
     echo "$NAME: creating new partitions"
 
+    # Rename the system partition label to "SYSTEM" (uppercase) to avoid conflicts with
+    # the eMMC "system" partition during early mount.
     sgdisk --new="${system_id}::+3584M" \
-        --change-name="${system_id}:system" \
+        --change-name="${system_id}:SYSTEM" \
         --typecode="${system_id}:8300" \
         "$DEV_BLOCK_MICROSD" || {
         echo "$NAME: FATAL: failed to create new system partition!" >&2
@@ -197,7 +199,11 @@ formatMicroSdCardPartitionAsEXT4() {
     }
 
     partition_names=$(printf '%s\n' "$microsd_partition_table" | awk '/^[[:space:]]*[0-9]+/ {print $1":"$7}')
-    target_part_id=$(echo "$partition_names" | grep ":${part_name}$" | cut -d: -f1)
+    if [ "$part_name" = "system" ]; then
+        target_part_id=$(echo "$partition_names" | grep ":SYSTEM$" | cut -d: -f1)
+    else
+        target_part_id=$(echo "$partition_names" | grep ":${part_name}$" | cut -d: -f1)
+    fi
 
     checkNumeric "$NAME" "${part_name}_id" "$target_part_id" || return 1
 

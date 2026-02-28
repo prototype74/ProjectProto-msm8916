@@ -66,7 +66,11 @@ calculateMicroSdPartitionSizes() {
     sector_size=$(blockdev --getss "$DEV_BLOCK_MICROSD")
 
     for part_name in system cache hidden userdata vendor; do
-        part_id=$(echo "$partition_names" | grep ":$part_name$" | cut -d: -f1)
+        if [ "$part_name" = "system" ]; then
+            part_id=$(echo "$partition_names" | grep ":SYSTEM$" | cut -d: -f1)
+        else
+            part_id=$(echo "$partition_names" | grep ":$part_name$" | cut -d: -f1)
+        fi
         checkNumeric "$NAME" "${part_name}_id" "$part_id" || {
             updateProperty "microsd_${part_name}_size" "0 Bytes" "$PROP"
             continue
@@ -109,7 +113,7 @@ projectProtoInstalled() {
     }
 
     partition_names=$(printf '%s\n' "$microsd_partition_table" | awk '/^[[:space:]]*[0-9]+/ {print $1":"$7}')
-    system_id=$(echo "$partition_names" | grep ":system$" | cut -d: -f1)
+    system_id=$(echo "$partition_names" | grep ":SYSTEM$" | cut -d: -f1)
     vendor_id=$(echo "$partition_names" | grep ":vendor$" | cut -d: -f1)
 
     checkNumeric "$NAME" "system_id" "$system_id" || {
@@ -167,7 +171,11 @@ mountMicroSdCardPartition() {
     }
 
     partition_names=$(printf '%s\n' "$microsd_partition_table" | awk '/^[[:space:]]*[0-9]+/ {print $1":"$7}')
-    target_part_id=$(echo "$partition_names" | grep ":${part_name}$" | cut -d: -f1)
+    if [ "$part_name" = "system" ]; then
+        target_part_id=$(echo "$partition_names" | grep ":SYSTEM$" | cut -d: -f1)
+    else
+        target_part_id=$(echo "$partition_names" | grep ":${part_name}$" | cut -d: -f1)
+    fi
 
     checkNumeric "$NAME" "${part_name}_id" "$target_part_id" || return 1
 
