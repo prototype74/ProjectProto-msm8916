@@ -21,6 +21,7 @@
 # SOFTWARE.
 
 readonly TMP_SCRIPTS="/tmp/scripts"
+readonly LOG_FILE="/tmp/ProjectProto.log"
 readonly PARTITIONS="system cache hidden userdata vendor"
 readonly GREEN='\033[1;32m'
 readonly YELLOW='\033[1;33m'
@@ -29,22 +30,35 @@ readonly RESET='\033[0m'
 
 set -e
 
+if [ -e "$LOG_FILE" ]; then
+    rm -f "$LOG_FILE"
+fi
+
+exec 4>&1 # Console file descriptor
+exec 3>>"$LOG_FILE" # Logfile file descriptor
+exec 1>&3 2>&3 # Redirect stdout and stderr to logfile
+
 print_message() {
     local message="$1"
     local color="$2"
 
     if [ -n "$color" ]; then
-        echo -e "${color}${message}${RESET}"
+        echo -e "${color}${message}${RESET}" >&4
     else
-        echo "$message"
+        echo "$message" >&4
     fi
+    echo "$message"
 }
 
 abort() {
     local message="$1"
     local exit_code="${2:-1}"
 
-    print_message "$message" "$RED"
+    print_message "$message" "$YELLOW"
+    print_message " "
+    print_message "Log file created at '$LOG_FILE'" "$YELLOW"
+    print_message " "
+    print_message "Failed to install ProjectProto" "$RED"
     print_message " "
     sleep 0.5
     exit "$exit_code"
@@ -81,21 +95,21 @@ print_message "**********************************************"
 print_message "Do not remove your microSD card!" $RED
 print_message " "
 
-run init > /dev/null || abort "Failed to initialize environment" 255
+run init || abort "Failed to initialize environment" 255
 run utilities emmcAvailable || abort "eMMC device not available" 255
-run validation checkRequiredTools > /dev/null || abort "Recovery does not provide required tools" 127
+run validation checkRequiredTools || abort "Recovery does not provide required tools" 127
 
 # VALIDATION
 print_message "· Validation"
 print_message "-- Checking for device compatibility"
-run validation checkDevice > /dev/null || abort "!! Unsupported device. Aborting..."
+run validation checkDevice || abort "!! Unsupported device. Aborting..."
 print_message "-- $(getProperty device_variant $PROP) detected"
 
 print_message "-- Checking microSD card"
 run utilities microSdCardAvailable || abort "!! No microSD card detected"
-run validation compareMaxSectors > /dev/null || abort "!! Insufficient space on microSD card"
+run validation compareMaxSectors || abort "!! Insufficient space on microSD card"
 
-if run utilities projectProtoInstalled > /dev/null 2>&1; then
+if run utilities projectProtoInstalled; then
     print_message " "
     print_message "ProjectProto is already installed" $GREEN
     print_message " "
@@ -106,7 +120,7 @@ run utilities calculateMicroSdSize
 print_message "-- microSD card size: $(getProperty microsd_total_size $PROP)"
 
 print_message "-- Checking eMMC partition layout"
-run validation checkEmmcPartitionLayout > /dev/null || abort "!! Partition layout does not meet requirements"
+run validation checkEmmcPartitionLayout || abort "!! Partition layout does not meet requirements"
 
 print_message "-- Validation completed!"
 print_message " "
@@ -114,34 +128,34 @@ print_message " "
 # CLONING MEMORY
 print_message "· Cloner"
 print_message "-- Unmounting microSD partitions"
-run utilities unmountMicroSdPartitions > /dev/null || abort "!! Failed to unmount microSD partitions"
+run utilities unmountMicroSdPartitions || abort "!! Failed to unmount microSD partitions"
 
 print_message "-- Cloning eMMC to microSD. This may take a while..."
-run cloner cloneEmmcToMicroSd > /dev/null || abort "!! FATAL: Cloning process failed"
+run cloner cloneEmmcToMicroSd || abort "!! FATAL: Cloning process failed"
 print_message "-- eMMC cloned to microSD successfully!"
 print_message " "
 
 # REPARTITIONER
 print_message "· Repartitioner"
 print_message "-- Repartitioning microSD card"
-run repartitioner repartitionMicroSdCard > /dev/null || abort "!! FATAL: Failed to repartition microSD card"
+run repartitioner repartitionMicroSdCard || abort "!! FATAL: Failed to repartition microSD card"
 
 print_message "-- Formatting target partitions as EXT4 on microSD card"
 for partition in $PARTITIONS; do
     print_message "   - Formatting $partition"
-    run repartitioner formatMicroSdCardPartitionAsEXT4 "$partition" > /dev/null 2>&1 || \
+    run repartitioner formatMicroSdCardPartitionAsEXT4 "$partition" || \
         abort "!! Failed to format $partition partition on microSD card"
 done
 
 print_message "-- Re-reading partition table from microSD card"
-run utilities reReadMicroSdPartitionTable > /dev/null || abort "!! Failed to re-read partition table"
+run utilities reReadMicroSdPartitionTable || abort "!! Failed to re-read partition table"
 print_message "-- microSD card repartitioned successfully!"
 print_message " "
 
 # MISC
 print_message "· Miscellaneous"
 print_message "-- Calculating target partition sizes on microSD card"
-if run utilities calculateMicroSdPartitionSizes > /dev/null; then
+if run utilities calculateMicroSdPartitionSizes; then
     print_message "   - System: $(getProperty microsd_system_size $PROP)"
     print_message "   - Cache: $(getProperty microsd_cache_size $PROP)"
     print_message "   - Hidden: $(getProperty microsd_hidden_size $PROP)"
@@ -157,7 +171,7 @@ for partition in $PARTITIONS; do
         mount_point="/${partition}_sdc2"
     fi
 
-    if ! run utilities mountMicroSdCardPartition "$partition" > /dev/null; then
+    if ! run utilities mountMicroSdCardPartition "$partition"; then
         print_message "   ! Failed to mount $partition partition from microSD card" $YELLOW
     else
         print_message "   - Mounted $partition partition as $mount_point"
@@ -165,7 +179,7 @@ for partition in $PARTITIONS; do
 done
 print_message " "
 
-if run utilities projectProtoInstalled > /dev/null 2>&1; then
+if run utilities projectProtoInstalled; then
     print_message "ProjectProto installed successfully!" $GREEN
 else
     print_message "ProjectProto not properly installed!" $YELLOW
