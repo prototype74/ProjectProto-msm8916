@@ -63,6 +63,14 @@ _checkMicroSdPartitionLayout() {
 
 # Clone the entire eMMC storage to microSD card
 cloneEmmcToMicroSd() {
+    local output_fd_path="$1"
+    local installer_type="${2:-adb}"
+    local progress_start="$3"
+    local progress_range="$4"
+    local dd_status_path="/tmp/dd_status"
+    local emmc_size
+    local dd_pid dd_exit
+
     if ! emmcAvailable; then
         echo "$NAME: eMMC device not found: $DEV_BLOCK_EMMC" >&2
         return 1
@@ -73,12 +81,64 @@ cloneEmmcToMicroSd() {
         return 1
     fi
 
-    echo "$NAME: cloning eMMC to microSD card started!"
-
-    dd if="$DEV_BLOCK_EMMC" of="$DEV_BLOCK_MICROSD" bs=4m || {
-        echo "$NAME: cloning process failed!" >&2
+    emmc_size=$(blockdev --getsize64 "$DEV_BLOCK_EMMC") || {
+        echo "$NAME: failed to get eMMC size" >&2
         return 1
     }
+
+    echo "$NAME: cloning eMMC to microSD card started! (size: ${emmc_size} bytes)"
+
+    dd if="$DEV_BLOCK_EMMC" of="$DEV_BLOCK_MICROSD" bs=4m 2>"$dd_status_path" &
+    dd_pid=$!
+
+    sleep 1 # wait for dd to start writing before entering progress loop
+
+    # Cloning can take a long time depending on the eMMC size and write speed.
+    # To avoid the process from appearing stuck, send USR1 to dd periodically
+    # to get the current write position and update the progress (bar) accordingly.
+    if [ -p "$output_fd_path" ] || [ -c "$output_fd_path" ]; then
+        local bytes_written progress
+
+        while kill -0 "$dd_pid" 2>/dev/null; do
+            kill -USR1 "$dd_pid" 2>/dev/null
+            sleep 1 # wait for dd output
+            bytes_written=$(awk '/bytes/ {print $1}' "$dd_status_path" 2>/dev/null | tail -1)
+
+            if [ -n "$bytes_written" ] && [ "$bytes_written" != "0" ]; then
+                # Update the progress bar in TWRP's GUI
+                if [ "$installer_type" = "flashable" ]; then
+                    progress=$(awk -v written="$bytes_written" \
+                                -v total="$emmc_size" \
+                                -v start="$progress_start" \
+                                -v range="$progress_range" \
+                            'BEGIN { p = start + (written / total) * range; printf "%.2f", p }')
+                    echo "set_progress $progress" > "$output_fd_path"
+                # Show text based progress in ADB terminal
+                elif [ "$installer_type" = "adb" ]; then
+                    progress=$(awk -v written="$bytes_written" \
+                                -v total="$emmc_size" \
+                            'BEGIN { printf "%.1f", (written / total) * 100 }')
+                    printf "\r   >>> Cloning... %s%%" "$progress" > "$output_fd_path"
+                fi
+            fi
+        done
+
+        if [ "$installer_type" = "adb" ]; then
+            printf "\r%-30s\r" " " > "$output_fd_path"
+        fi
+    fi
+
+    wait "$dd_pid"
+    dd_exit=$?
+
+    rm -f "$dd_status_path" || {
+        echo "$NAME: unable to remove dd_status file!" >&2
+    }
+
+    if [ "$dd_exit" -ne 0 ]; then
+        echo "$NAME: cloning process failed!" >&2
+        return 1
+    fi
 
     blockdev --flushbufs "$DEV_BLOCK_MICROSD" || {
         echo "$NAME: failed to flush write buffers to microSD card!" >&2
@@ -105,7 +165,7 @@ cloneEmmcToMicroSd() {
 
 {
     if type "$1" >/dev/null 2>&1; then
-        "$1"
+        "$1" "$2" "$3" "$4" "$5"
         exit $?
     else
         echo "Function $1 not found" >&2

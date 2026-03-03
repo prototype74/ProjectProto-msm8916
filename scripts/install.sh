@@ -20,6 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+readonly OUTPUT_FD="/proc/self/fd/0"
 readonly TMP_SCRIPTS="/tmp/scripts"
 readonly LOG_FILE="/tmp/ProjectProto.log"
 readonly GREEN='\033[1;32m'
@@ -130,7 +131,7 @@ print_message "-- Unmounting microSD partitions"
 run utilities unmountMicroSdPartitions || abort "!! Failed to unmount microSD partitions"
 
 print_message "-- Cloning eMMC to microSD. This may take a while..."
-run cloner cloneEmmcToMicroSd || abort "!! FATAL: Cloning process failed"
+run cloner cloneEmmcToMicroSd "$OUTPUT_FD" "adb" || abort "!! FATAL: Cloning process failed"
 print_message "-- eMMC cloned to microSD successfully!"
 print_message " "
 
