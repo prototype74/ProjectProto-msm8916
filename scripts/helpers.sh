@@ -34,6 +34,28 @@ microSdCardAvailable() {
     [ -b "$DEV_BLOCK_MICROSD" ] && return 0 || return 1;
 }
 
+# Check if given value is a valid float
+checkFloat() {
+    local scr_name="$1"
+    local name="$2"
+    local value="$3"
+
+    if [ -z "$value" ]; then
+        echo "$scr_name: '$name' is empty!" >&2
+        return 1
+    fi
+
+    case "$value" in
+        0.[0-9][0-9] | [0-9].[0-9][0-9])
+            return 0
+            ;;
+        *)
+            echo "$scr_name: '$name' is not a valid float: '$value'" >&2
+            return 1
+            ;;
+    esac
+}
+
 # Check if given value is a valid number
 checkNumeric() {
     local scr_name="$1"

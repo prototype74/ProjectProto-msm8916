@@ -161,16 +161,16 @@ run utilities unmountMicroSdPartitions || abort "!! Failed to unmount microSD pa
 set_progress 0.13
 
 ui_print "-- Cloning eMMC to microSD. This may take a while..."
-run cloner cloneEmmcToMicroSd "$OUTPUT_FD" "flashable" 0.13 0.57 || abort "!! FATAL: Cloning process failed"
+run cloner cloneEmmcToMicroSd "$OUTPUT_FD" "flashable" 0.13 0.62 || abort "!! FATAL: Cloning process failed"
 ui_print "-- eMMC cloned to microSD successfully!"
-set_progress 0.70
+set_progress 0.75
 ui_print " "
 
 # REPARTITIONER
 ui_print "· Repartitioner"
 ui_print "-- Repartitioning microSD card"
-run repartitioner repartitionMicroSdCard || abort "!! FATAL: Failed to repartition microSD card"
-set_progress 0.80
+run repartitioner repartitionMicroSdCard "$OUTPUT_FD" 0.75 || abort "!! FATAL: Failed to repartition microSD card"
+set_progress 0.85
 
 ui_print "-- Formatting target partitions as EXT4 on microSD card"
 for partition in $PARTITIONS; do
@@ -178,12 +178,12 @@ for partition in $PARTITIONS; do
     run repartitioner formatMicroSdCardPartitionAsEXT4 "$partition" || \
         abort "!! Failed to format $partition partition on microSD card"
 done
-set_progress 0.85
+set_progress 0.90
 
 ui_print "-- Re-reading partition table from microSD card"
 run utilities reReadMicroSdPartitionTable || abort "!! Failed to re-read partition table"
 ui_print "-- microSD card repartitioned successfully!"
-set_progress 0.86
+set_progress 0.91
 ui_print " "
 
 # MISC
@@ -196,7 +196,7 @@ if run utilities calculateMicroSdPartitionSizes; then
     ui_print "   - Userdata: $(getProperty microsd_userdata_size $PROP)"
     ui_print "   - Vendor: $(getProperty microsd_vendor_size $PROP)"
 fi
-set_progress 0.87
+set_progress 0.92
 
 ui_print "-- Mounting target partitions"
 for partition in $PARTITIONS; do
@@ -212,7 +212,7 @@ for partition in $PARTITIONS; do
         ui_print "   - Mounted $partition partition as $mount_point"
     fi
 done
-set_progress 0.92
+set_progress 0.97
 ui_print " "
 
 if run utilities projectProtoInstalled; then
@@ -221,7 +221,7 @@ else
     ui_print "ProjectProto not properly installed!"
 fi
 ui_print " "
-set_progress 0.93
+set_progress 0.98
 
 clean_up
 set_progress 1.00

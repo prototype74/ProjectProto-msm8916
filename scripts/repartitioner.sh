@@ -23,6 +23,17 @@
 source /tmp/scripts/helpers.sh  # import helpers script
 
 readonly NAME="repartitioner"
+progress=""
+
+# Update ongoing progress bar in TWRP's GUI
+_updateProgress() {
+    local output_fd_path="$1"
+
+    if [ -p "$output_fd_path" ] && [ -n "$progress" ]; then
+        progress=$(awk -v p="$progress" 'BEGIN { printf "%.2f", p + 0.01 }')
+        echo "set_progress $progress" > "$output_fd_path"
+    fi
+}
 
 # Repartition microSD card after cloning:
 # - enlarge and rename system partition
@@ -31,6 +42,8 @@ readonly NAME="repartitioner"
 # - delete and recreate system/cache/hidden/userdata partitions
 # - add vendor partition at the end of the device
 repartitionMicroSdCard() {
+    local output_fd_path="$1"
+    local progress_start="$2"
     local microsd_partition_table partition_names
     local system_id cache_id hidden_id userdata_id vendor_id
     local vendor_start_sector
@@ -101,6 +114,10 @@ repartitionMicroSdCard() {
 
     echo "$NAME: repartitioning microSD card started!"
 
+    if checkFloat "$NAME" "progress_start" "$progress_start"; then
+        progress="$progress_start"
+    fi
+
     # Keep IDs in descending order!
     for part_id in "$userdata_id" "$hidden_id" "$cache_id" "$system_id"; do
         part_name=$(echo "$partition_names" | awk -F: -v part_id="$part_id" '$1 == part_id {print $2}')
@@ -109,6 +126,7 @@ repartitionMicroSdCard() {
             return 1
         }
         echo "$NAME: deleted $part_name partition (ID: $part_id)"
+        _updateProgress "$output_fd_path"
     done
 
     echo "$NAME: creating new partitions"
@@ -123,6 +141,7 @@ repartitionMicroSdCard() {
         return 1
     }
     echo "$NAME: system partition created (ID: $system_id)"
+    _updateProgress "$output_fd_path"
 
     sgdisk --new="${cache_id}::+${cache_sector_size}S" \
         --change-name="${cache_id}:cache" \
@@ -132,6 +151,7 @@ repartitionMicroSdCard() {
         return 1
     }
     echo "$NAME: cache partition created (ID: $cache_id)"
+    _updateProgress "$output_fd_path"
 
     sgdisk --new="${hidden_id}::+${hidden_sector_size}S" \
         --change-name="${hidden_id}:hidden" \
@@ -141,6 +161,7 @@ repartitionMicroSdCard() {
         return 1
     }
     echo "$NAME: hidden partition created (ID: $hidden_id)"
+    _updateProgress "$output_fd_path"
 
     sgdisk --new="${userdata_id}::$((vendor_start_sector - 1))" \
         --change-name="${userdata_id}:userdata" \
@@ -150,6 +171,7 @@ repartitionMicroSdCard() {
         return 1
     }
     echo "$NAME: userdata partition created (ID: $userdata_id)"
+    _updateProgress "$output_fd_path"
 
     sgdisk --new="${vendor_id}:${vendor_start_sector}:${total_sectors}" \
         --change-name="${vendor_id}:vendor" \
@@ -159,6 +181,7 @@ repartitionMicroSdCard() {
         return 1
     }
     echo "$NAME: vendor partition created (ID: $vendor_id)"
+    _updateProgress "$output_fd_path"
 
     sleep 2
 
@@ -166,6 +189,8 @@ repartitionMicroSdCard() {
         echo "$NAME: failed to re-read partition table from microSD card!" >&2
         return 1
     fi
+
+    _updateProgress "$output_fd_path"
 
     echo "$NAME: repartition microSD card finished!"
     return 0
@@ -233,7 +258,7 @@ formatMicroSdCardPartitionAsEXT4() {
 
 {
     if type "$1" >/dev/null 2>&1; then
-        "$1" "$2"
+        "$1" "$2" "$3"
         exit $?
     else
         echo "Function $1 not found" >&2
