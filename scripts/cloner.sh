@@ -100,6 +100,12 @@ cloneEmmcToMicroSd() {
         local bytes_written progress
 
         while kill -0 "$dd_pid" 2>/dev/null; do
+            if ! microSdCardAvailable; then
+                echo "$NAME: microSD card removed during process!" >&2
+                kill "$dd_pid" 2>/dev/null
+                break
+            fi
+
             kill -USR1 "$dd_pid" 2>/dev/null
             sleep 1 # wait for dd output
             bytes_written=$(awk '/bytes/ {print $1}' "$dd_status_path" 2>/dev/null | tail -1)
