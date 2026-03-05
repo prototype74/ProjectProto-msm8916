@@ -81,7 +81,10 @@ checkNumeric() {
 unmountMicroSdPartitions() {
     local mountpoints mp
 
-    mountpoints=$(grep "^$DEV_BLOCK_MICROSD" /proc/mounts | awk '{print $2}')
+    mountpoints=$(
+        grep -E "^($DEV_BLOCK_MICROSD|$DEV_BLOCK_PLATFORM_MICROSD)" /proc/mounts |
+        awk '{print $2}'
+    )
 
     if [ -z "$mountpoints" ]; then
         return 0
