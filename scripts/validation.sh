@@ -27,10 +27,24 @@ readonly NAME="validation"
 
 # Checks whether the required tools are provided by recovery
 checkRequiredTools() {
-    command -v dd sgdisk blockdev awk mke2fs || {
-        echo "$NAME: one or more required tools are missing" >&2
+    local missing=""
+
+    for cmd in dd sgdisk blockdev awk mke2fs; do
+        if ! command -v "$cmd" > /dev/null 2>&1; then
+            if [ -n "$missing" ]; then
+                missing="$missing $cmd"
+            else
+                missing="$cmd"
+            fi
+        fi
+    done
+
+    if [ -n "$missing" ]; then
+        echo "$NAME: missing required tools: $missing" >&2
+        updateProperty "missing_tools" "$missing" "$PROP"
         return 1
-    }
+    fi
+
     return 0
 }
 

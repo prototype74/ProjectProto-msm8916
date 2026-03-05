@@ -58,6 +58,7 @@ generateProperties() {
 
     echo "#Auto generated properties file" >> "$PROP"
     echo "#$CURRENT_DATE" >> "$PROP"
+    echo "missing_tools=none" >> "$PROP"
     echo "device_variant=unknown" >> "$PROP"
     echo "microsd_total_size=0" >> "$PROP"
     echo "microsd_system_size=0" >> "$PROP"

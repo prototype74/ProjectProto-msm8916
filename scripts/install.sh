@@ -97,7 +97,8 @@ print_message " "
 
 run init || abort "Failed to initialize environment" 255
 run utilities emmcAvailable || abort "eMMC device not available" 255
-run validation checkRequiredTools || abort "Recovery does not provide required tools" 127
+run validation checkRequiredTools || \
+    abort "Recovery is missing required tools: $(getProperty missing_tools $PROP)" 127
 
 # VALIDATION
 print_message "· Validation"
