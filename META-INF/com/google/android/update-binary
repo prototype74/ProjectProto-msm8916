@@ -44,7 +44,7 @@ ui_print() {
     echo "$message"
 }
 
-progress() {
+show_progress() {
     echo "progress $1 $2" > "$OUTPUT_FD"
 }
 
@@ -108,7 +108,7 @@ chmod -R 0755 "$TMP_SCRIPTS" || abort "Failed to set scripts permissions"
 
 source $TMP_SCRIPTS/constants.sh
 source $TMP_SCRIPTS/property_lite.sh
-progress 1.00 0
+show_progress 1.00 0
 
 ui_print " "
 ui_print "ProjectProto - eMMC cloner and repartitioner"
