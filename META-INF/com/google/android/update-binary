@@ -172,13 +172,17 @@ ui_print "-- Repartitioning microSD card"
 run repartitioner repartitionMicroSdCard "$OUTPUT_FD" 0.75 || abort "!! FATAL: Failed to repartition microSD card"
 set_progress 0.85
 
+progress="0.85"
 ui_print "-- Formatting target partitions as EXT4 on microSD card"
 for partition in $PARTITIONS; do
     ui_print "   - Formatting $partition"
     run repartitioner formatMicroSdCardPartitionAsEXT4 "$partition" || \
         abort "!! Failed to format $partition partition on microSD card"
+    progress=$(awk -v p="$progress" 'BEGIN {
+        v = p + 0.01; printf "%.2f", (v > 0.90 ? 0.90 : v)
+    }')
+    set_progress $progress
 done
-set_progress 0.90
 
 ui_print "-- Re-reading partition table from microSD card"
 run utilities reReadMicroSdPartitionTable || abort "!! Failed to re-read partition table"
@@ -198,6 +202,7 @@ if run utilities calculateMicroSdPartitionSizes; then
 fi
 set_progress 0.92
 
+progress="0.92"
 ui_print "-- Mounting target partitions"
 for partition in $PARTITIONS; do
     if [ "$partition" = "userdata" ]; then
@@ -211,8 +216,11 @@ for partition in $PARTITIONS; do
     else
         ui_print "   - Mounted $partition partition as $mount_point"
     fi
+    progress=$(awk -v p="$progress" 'BEGIN {
+        v = p + 0.01; printf "%.2f", (v > 0.97 ? 0.97 : v)
+    }')
+    set_progress $progress
 done
-set_progress 0.97
 ui_print " "
 
 if run utilities projectProtoInstalled; then
