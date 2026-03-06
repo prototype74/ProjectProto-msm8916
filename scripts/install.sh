@@ -182,6 +182,8 @@ print_message " "
 
 if run utilities projectProtoInstalled; then
     print_message "ProjectProto installed successfully!" $GREEN
+    print_message " "
+    print_message "Note: Reboot to recovery to apply changes to the microSD card"
 else
     print_message "ProjectProto not properly installed!" $YELLOW
 fi

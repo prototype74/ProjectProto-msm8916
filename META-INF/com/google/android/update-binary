@@ -226,6 +226,8 @@ ui_print " "
 
 if run utilities projectProtoInstalled; then
     ui_print "ProjectProto installed successfully!"
+    ui_print " "
+    ui_print "Note: Reboot to recovery to apply changes to the microSD card"
 else
     ui_print "ProjectProto not properly installed!"
 fi
