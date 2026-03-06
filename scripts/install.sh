@@ -89,9 +89,9 @@ source $TMP_SCRIPTS/constants.sh  # import constants script
 source $TMP_SCRIPTS/property_lite.sh  # import property_lite script
 
 print_message " "
-print_message "ProjectProto - eMMC cloner and repartitioner"
+print_message "ProjectProto 1.0 - eMMC cloner and repartitioner"
 print_message "for selected Galaxy MSM8916 devices"
-print_message "**********************************************"
+print_message "************************************************"
 print_message "Do not remove your microSD card!" $RED
 print_message " "
 
