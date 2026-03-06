@@ -24,7 +24,7 @@ ProjectProto clones the entire eMMC storage (including all existing partitions) 
 
 ### Partition layout changes on the microSD card
 
-- The system partition will be resized to 3.5 GiB.
+- The system partition will be resized to 3.5 GiB. The partition label will be renamed to `SYSTEM` (uppercase) to prevent boot issues with ROMs installed on internal storage that use Android's early mounting system.
 - The cache and hidden partitions will retain their original sizes. Repartitioning is required because the system partition precedes them and will be expanded.
 - A new vendor partition with a size of 700 MiB will be created. To preserve the original partition order, the vendor partition is placed after the userdata partition.
 - All remaining available sectors will be assigned to the userdata partition.
@@ -43,10 +43,16 @@ Recommended: At least a 32 GB microSD card with Class 10, UHS-I (U3), V30, A2, o
 > The performance of the microSD card directly affects ROM performance. Cards slower than the recommended specifications may result in poor ROM performance and a bad user experience.
 
 ## Installation
-To preserve the modularity of ProjectProto, a single monolithic shell script was avoided. Instead the core operations were split into multiple shell script files. This approach ensures compatibility not only with shell-based installation scripts but also with (Aroma) updater scripts used in TWRP Recovery.
+To preserve the modularity of ProjectProto, a single monolithic shell script was avoided. Instead the core operations were split into multiple shell script files. This approach ensures compatibility not only with shell-based installation scripts but also with (aroma) updater scripts used in TWRP Recovery.
 
 ### Flashable
-W.I.P.
+Standalone flashable ZIP packages are available in this repository's [Releases](https://github.com/prototype74/ProjectProto-msm8916/releases).
+
+1. Download the latest release.
+2. Copy the ZIP file to your internal storage (not microSD card!).
+3. Boot into TWRP Recovery.
+4. Tap `Install` and select the downloaded ZIP file.
+5. Swipe to flash.
 
 ### Manual
 
@@ -68,17 +74,50 @@ sh /tmp/scripts/install.sh
 > [!IMPORTANT]
 > - The installation speed depends on the specifications of the microSD card.
 > - Do <b>not</b> remove the microSD card during installation!
+> - Reboot to recovery after the installation to apply all changes.
 
 ## Booting from microSD card
 
 The boot process depends on whether the device has a functional eMMC. If this is the case, the MSM8916 will always boot from the eMMC, regardless of whether ProjectProto is installed. To boot the Android OS from the microSD card, the kernel command line parameter `android.bootdevice` in the kernel image must be changed from `7824900.sdhci` to `7864900.sdhci`. This will lead the kernel to mount all partitions using `/dev/block/bootdevice/*` from the microSD card instead of the eMMC. If the kernel's device tree includes an Android fstab (e.g. for early mounting), the corresponding SDHCI paths must also be updated there.
+
+### Mounting the system partition from microSD
+Since the label of the system partition on the microSD card has been changed after repartitioning, the corresponding entries in the kernel's device tree or in the kernel ramdisk's fstab, which attempt to mount the system partition, must also be adjusted accordingly. The following instructions refer to general adjustments and may vary depending on the kernel configuration:
+
+- On Android 7.1 or earlier, update `fstab.qcom` in the kernel's ramdisk:
+    ```diff
+    -/dev/block/bootdevice/by-name/system   /system   ext4   ro,errors=panic,noload,block_validity   wait
+    +/dev/block/bootdevice/by-name/SYSTEM   /system   ext4   ro,errors=panic,noload,block_validity   wait
+    ```
+
+- On Android 8.0 and later, update the kernel's device tree:
+    ```diff
+    firmware {
+        android {
+            compatible = "android,firmware";
+            fstab {
+                compatible = "android,fstab";
+                system {
+                    compatible = "android,system";
+    -               dev = "/dev/block/platform/soc.0/7824900.sdhci/by-name/system";
+    +               dev = "/dev/block/platform/soc.0/7864900.sdhci/by-name/SYSTEM";
+                    type = "ext4";
+                    mnt_flags = "ro,barrier=1,discard";
+                    fsmgr_flags = "wait";
+                    status = "ok";
+                };
+            };
+        };
+    };
+    ```
+
+---
 
 With these changes applied, the boot process proceeds as follows:
 
 ![working_emmc](assets/working_emmc.jpg)
 
 > [!WARNING]
-> It is also important to remove the microSD card from the Android fstab, as otherwise the Android ramdisk may attempt to mount the first partition (APNHLOS) as external storage, incorrectly treating it as usable storage.
+> Make sure to remove the microSD card entry from Android's fstab, otherwise the ramdisk may attempt to mount the first partition (APNHLOS) as external storage, incorrectly treating it as usable storage.
 
 ### Boot process with a corrupted or failed eMMC
 
