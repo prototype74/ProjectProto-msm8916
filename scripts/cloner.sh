@@ -137,9 +137,9 @@ cloneEmmcToMicroSd() {
     wait "$dd_pid"
     dd_exit=$?
 
-    rm -f "$dd_status_path" || {
-        echo "$NAME: unable to remove dd_status file!" >&2
-    }
+    grep 'bytes' "$dd_status_path" 2>/dev/null | tail -1 || echo "$NAME: no dd status available" >&2
+
+    rm -f "$dd_status_path" || echo "$NAME: unable to remove dd_status file!" >&2
 
     if [ "$dd_exit" -ne 0 ]; then
         echo "$NAME: cloning process failed!" >&2
