@@ -37,7 +37,7 @@ This repartitioning allows the installation of larger, especially 64-bit based A
 - A fully functional microSD card slot
 - A microSD card of 16 GB or larger, providing enough space to hold the entire eMMC storage
 
-Recommended: At least a 32 GB microSD card with Class 10, UHS-I (U3), V30, A2, or better specifications.
+Recommended: At least a 32 GB microSD card with Class 10, UHS-I (U3), V30, A1, or better specifications.
 
 > [!IMPORTANT]
 > The performance of the microSD card directly affects ROM performance. Cards slower than the recommended specifications may result in poor ROM performance and a bad user experience.
