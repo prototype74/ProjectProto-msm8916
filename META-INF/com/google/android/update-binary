@@ -111,8 +111,8 @@ source $TMP_SCRIPTS/property_lite.sh
 show_progress 1.00 0
 
 ui_print " "
-ui_print "ProjectProto 1.0 - eMMC cloner and repartitioner"
-ui_print "for selected Galaxy MSM8916 devices"
+ui_print "ProjectProto 1.1 - eMMC cloner and repartitioner"
+ui_print "for selected Qualcomm MSM8916 devices"
 ui_print "************************************************"
 ui_print "Do not remove your microSD card!"
 ui_print " "
