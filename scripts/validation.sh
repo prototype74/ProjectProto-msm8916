@@ -52,15 +52,21 @@ checkRequiredTools() {
 
 # Check if device has MSM8916 SoC
 checkMSM8916Platform() {
-    local platform=$(getprop ro.board.platform)
+    local platform="$(getprop ro.board.platform)"
+    local platform_lower=$(echo "$platform" | tr '[:upper:]' '[:lower:]')
 
-    if [ "$platform" != "msm8916" ]; then
-        echo "$NAME: unsupported platform: $platform (expected msm8916)" >&2
-        return 1
+    if [ "$platform_lower" = "msm8916" ]; then
+        echo "$NAME: MSM8916 platform detected"
+        return 0
     fi
 
-    echo "$NAME: MSM8916 platform detected"
-    return 0
+    if grep -qi "msm8916" /proc/cpuinfo 2>/dev/null; then
+        echo "$NAME: MSM8916 platform detected (cpuinfo)"
+        return 0
+    fi
+
+    echo "$NAME: unsupported platform: ${platform:-empty} (expected msm8916)" >&2
+    return 1
 }
 
 # Check for supported device
