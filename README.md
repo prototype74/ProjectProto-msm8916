@@ -1,12 +1,10 @@
-# ProjectProto for selected Samsung Galaxy MSM8916 devices
+# ProjectProto for Qualcomm MSM8916 devices
 
-ProjectProto is an eMMC cloner and microSD repartitioner for selected Samsung Galaxy MSM8916 devices. It prepares supported devices to boot an Android OS from the microSD card.
+ProjectProto is a microSD repartitioning solution for Qualcomm MSM8916 devices. It provides different partition layouts depending on the intended use case.
 
 ## Why ProjectProto?
 
-On Samsung MSM8916 devices it is not possible to modify the partition table on the internal (eMMC) storage, regardless of the tool or method used. Whether attempting to delete, create, or modify partitions, tools will not report any errors and will appear to succeed but no actual changes will be made. In some cases even the contents of certain partitions cannot be modified, leaving users with limited options for customization.
-
-The partitions that can be modified on these devices, such as userdata, system, cache, boot, recovery and even efs, allow changes to their contents but the partitions themselves cannot be resized, deleted, or recreated. This limitation remains persistent even with advanced tools like `dd` and `sgdisk`. The root cause of this behavior is unclear but it is believed to be a combination of Qualcomm's and Samsung's proprietary security and protection mechanisms.
+On Samsung devices based on Qualcomm MSM8916, it is not possible to modify the partition table on the internal (eMMC) storage, regardless of the tool or method used. Whether attempting to delete, create, or modify partitions, tools will not report any errors and will appear to succeed but no actual changes will be made. In some cases even the contents of certain partitions cannot be modified, leaving users with limited options for customization. The root cause of this behavior is unclear but it is believed to be a combination of Qualcomm's and the OEM's proprietary security and protection mechanisms.
 
 ### Why is this an issue?
 
@@ -19,11 +17,14 @@ For users and developers who want to perform more advanced customization on thei
 
 ProjectProto clones the entire eMMC storage (including all existing partitions) to the microSD card using the `dd` utility. After cloning, the system, cache, hidden, and userdata partitions on the microSD card will be removed and recreated using `sgdisk` and `blockdev` to adjust the partition layout. The protection mechanisms on eMMC do not apply to microSD cards which allows the partition layout on the microSD card to be modified freely.
 
+ProjectProto Lite leaves the eMMC untouched and creates only a dedicated vendor partition by repartitioning the microSD card from scratch, leaving the remaining space available as external storage.
+
 > [!NOTE]
 > Only partitions are being cloned. Hardware-bound blocks e.g. Replay Protected Memory (`/dev/block/mmcblk0rpmb`) cannot be cloned.
 
 ### Partition layout changes on the microSD card
 
+#### Regular variant
 - The system partition will be resized to 3.5 GiB. The partition label will be renamed to `SYSTEM` (uppercase) to prevent boot issues with ROMs installed on internal storage that use Android's early mounting system.
 - The cache and hidden partitions will retain their original sizes. Repartitioning is required because the system partition precedes them and will be expanded.
 - A new vendor partition with a size of 700 MiB will be created. To preserve the original partition order, the vendor partition is placed after the userdata partition.
@@ -31,10 +32,18 @@ ProjectProto clones the entire eMMC storage (including all existing partitions) 
 
 This repartitioning allows the installation of larger, especially 64-bit based Android OS. The addition of a dedicated vendor partition also prepares the device for Android Treble compatibility.
 
+#### Lite variant
+- The first partition will use the majority of the available space and will be labeled `external`, serving as the primary storage partition.
+- A second partition with a size of 700 MiB will be created as vendor after the external partition.
+
+This repartitioning keeps the microSD card usable as an external storage device while adding a dedicated vendor partition for Android Treble compatibility.
+
 ## Requirements
 
+A fully functional microSD card slot is essential to use ProjectProto. However, additional requirements depend on the variant.
+
+### Regular variant
 - TWRP Recovery with the following tools included: `dd`, `sgdisk`, `blockdev`, `awk`, `mke2fs`
-- A fully functional microSD card slot
 - A microSD card of 16 GB or larger, providing enough space to hold the entire eMMC storage
 
 Recommended: At least a 32 GB microSD card with Class 10, UHS-I (U3), V30, A1, or better specifications.
@@ -42,8 +51,15 @@ Recommended: At least a 32 GB microSD card with Class 10, UHS-I (U3), V30, A1, o
 > [!IMPORTANT]
 > The performance of the microSD card directly affects ROM performance. Cards slower than the recommended specifications may result in poor ROM performance and a bad user experience.
 
+### Lite variant
+- TWRP Recovery with the following tools included: `sgdisk`, `blockdev`, `awk`, `mkexfatfs`, `mke2fs`
+- A microSD card of 2 GB or larger (Class 10 or better)
+
 ## Installation
 To preserve the modularity of ProjectProto, a single monolithic shell script was avoided. Instead the core operations were split into multiple shell script files. This approach ensures compatibility not only with shell-based installation scripts but also with (aroma) updater scripts used in TWRP Recovery.
+
+> [!WARNING]
+> Installing either ProjectProto variant completely repartitions the microSD card. All existing partitions and data on the microSD card will be lost. Back up any important data before installation.
 
 ### Flashable
 Standalone flashable ZIP packages are available in this repository's [Releases](https://github.com/prototype74/ProjectProto-msm8916/releases).
@@ -58,25 +74,31 @@ Standalone flashable ZIP packages are available in this repository's [Releases](
 
 1. Boot into TWRP Recovery
 2. Create a new directory `scripts` in `/tmp`:
-```shell
-mkdir -p /tmp/scripts
-```
-3. Copy all shell script files from this repository to `/tmp/scripts` on your Samsung MSM8916 device
+    ```shell
+    mkdir -p /tmp/scripts
+    ```
+3. Copy all shell script files from this repository to `/tmp/scripts` on your MSM8916 device
 4. Set the required permissions:
-```shell
-chmod 0755 /tmp/scripts/*
-```
-5. Run the installer:
-```shell
-sh /tmp/scripts/install.sh
-```
+    ```shell
+    chmod 0755 /tmp/scripts/*
+    ```
+5. Run the installer for the desired variant:
+
+    **Regular:**
+    ```shell
+    sh /tmp/scripts/install.sh
+    ```
+    **Lite:**
+    ```shell
+    sh /tmp/scripts/install_lite.sh
+    ```
 ---
 > [!IMPORTANT]
 > - The installation speed depends on the specifications of the microSD card.
 > - Do <b>not</b> remove the microSD card during installation!
 > - Reboot to recovery after the installation to apply all changes.
 
-## Booting from microSD card
+## Booting from microSD card (Regular variant only)
 
 The boot process depends on whether the device has a functional eMMC. If this is the case, the MSM8916 will always boot from the eMMC, regardless of whether ProjectProto is installed. To boot the Android OS from the microSD card, the kernel command line parameter `android.bootdevice` in the kernel image must be changed from `7824900.sdhci` to `7864900.sdhci`. This will lead the kernel to mount all partitions using `/dev/block/bootdevice/*` from the microSD card instead of the eMMC. If the kernel's device tree includes an Android fstab (e.g. for early mounting), the corresponding SDHCI paths must also be updated there.
 
@@ -131,12 +153,16 @@ Therefore, ROM developers are advised to install the kernel image on both the eM
 
 ## Supported devices
 
-The following devices are supported by ProjectProto:
+### Regular variant
+The following devices are supported by the Regular variant:
 
 - <b>Galaxy A3 2015</b>: SM-A300FU, SM-A300Y
 - <b>Galaxy Ace 4</b>: SM-G357FZ
 - <b>Galaxy J5 2015</b>: SM-J500F, SM-J500FN, SM-J500G, SM-J500H, SM-J500M, SM-J500N0, SM-J500Y
 - <b>Galaxy J5 2016</b>: SM-J510F, SM-J510FN, SM-J510FQ, SM-J510GN, SM-J510H, SM-J510K, SM-J510L, SM-J510MN, SM-J510S, SM-J510UN
+
+### Lite variant
+ProjectProto Lite is **not restricted** to the devices listed above. It is designed to work with Android devices based on Qualcomm MSM8916.
 
 ## License
 
