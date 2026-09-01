@@ -30,6 +30,11 @@ checkRequiredTools() {
     local tools="$1"
     local missing=""
 
+    if [ -z "$tools" ]; then
+        echo "$NAME: no tools specified to check" >&2
+        return 1
+    fi
+
     for cmd in $tools; do
         if ! command -v "$cmd" > /dev/null 2>&1; then
             missing="${missing:+$missing }$cmd"
