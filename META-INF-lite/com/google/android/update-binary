@@ -25,7 +25,7 @@ readonly API_VERSION="$1"
 readonly FD_ID="$2"
 readonly ZIP_FILE="$3"
 readonly OUTPUT_FD="/proc/self/fd/$FD_ID"
-readonly LOG_FILE="/tmp/ProjectProto.log"
+readonly LOG_FILE="/tmp/ProjectProtoLite.log"
 readonly TMP_SCRIPTS="/tmp/scripts"
 
 set -e
@@ -69,7 +69,7 @@ abort() {
     ui_print " "
     ui_print "Log file created at '$LOG_FILE'"
     ui_print " "
-    ui_print "Failed to install ProjectProto"
+    ui_print "Failed to install ProjectProto Lite"
     ui_print " "
     sleep 0.5
     exit "$exit_code"
@@ -111,125 +111,94 @@ source $TMP_SCRIPTS/property_lite.sh
 show_progress 1.00 0
 
 ui_print " "
-ui_print "ProjectProto 1.0 - eMMC cloner and repartitioner"
-ui_print "for selected Galaxy MSM8916 devices"
+ui_print "ProjectProto Lite 1.0 - microSD repartitioner"
+ui_print "for devices powered by MSM8916"
 ui_print "************************************************"
 ui_print "Do not remove your microSD card!"
 ui_print " "
 
 run init || abort "Failed to initialize environment" 255
-run utilities emmcAvailable || abort "eMMC device not available" 255
-run validation checkRequiredTools "$REQUIRED_TOOLS" || \
+run validation checkRequiredTools "$REQUIRED_TOOLS_LITE" || \
     abort "Recovery is missing required tools: $(getProperty missing_tools $PROP)" 127
 
 # VALIDATION
 ui_print "· Validation"
-ui_print "-- Checking for device compatibility"
-run validation checkDevice || abort "!! Unsupported device. Aborting..." 7
-ui_print "-- $(getProperty device_variant $PROP) detected"
+ui_print "-- Checking for platform compatibility"
+run validation checkMSM8916Platform || abort "!! Unsupported platform. Aborting..." 7
+ui_print "-- MSM8916 platform detected"
 set_progress 0.05
 
 ui_print "-- Checking microSD card"
 run utilities microSdCardAvailable || abort "!! No microSD card detected" 7
-set_progress 0.06
+set_progress 0.09
 
-run validation compareMaxSectors || abort "!! Insufficient space on microSD card" 7
-set_progress 0.07
+run validation checkMicroSdSizeLite || abort "!! Insufficient space on microSD card" 7
+set_progress 0.13
 
-if run utilities projectProtoInstalled; then
+if run utilities projectProtoLiteInstalled; then
     ui_print " "
-    ui_print "ProjectProto is already installed"
+    ui_print "ProjectProto Lite is already installed"
     ui_print " "
     clean_up
     exit 0
 fi
-set_progress 0.08
+set_progress 0.17
 
 run utilities calculateMicroSdSize
 ui_print "-- microSD card size: $(getProperty microsd_total_size $PROP)"
-set_progress 0.09
+set_progress 0.21
 
-ui_print "-- Checking eMMC partition layout"
-run validation checkEmmcPartitionLayout || abort "!! Partition layout does not meet requirements" 7
 ui_print "-- Validation completed!"
-set_progress 0.12
-ui_print " "
-
-# CLONING MEMORY
-ui_print "· Cloner"
-ui_print "-- Unmounting microSD partitions"
-run utilities unmountMicroSdPartitions || abort "!! Failed to unmount microSD partitions"
-set_progress 0.13
-
-ui_print "-- Cloning eMMC to microSD. This may take a while..."
-run cloner cloneEmmcToMicroSd "$OUTPUT_FD" "flashable" 0.13 0.62 || abort "!! FATAL: Cloning process failed"
-ui_print "-- eMMC cloned to microSD successfully!"
-set_progress 0.75
+set_progress 0.25
 ui_print " "
 
 # REPARTITIONER
 ui_print "· Repartitioner"
-ui_print "-- Repartitioning microSD card"
-run repartitioner repartitionMicroSdCard "$OUTPUT_FD" 0.75 || abort "!! FATAL: Failed to repartition microSD card"
-set_progress 0.85
+ui_print "-- Unmounting microSD partitions"
+run utilities unmountMicroSdPartitions || abort "!! Failed to unmount microSD partitions"
+set_progress 0.28
 
-progress="0.85"
-ui_print "-- Formatting target partitions as EXT4 on microSD card"
-for partition in $PARTITIONS; do
-    ui_print "   - Formatting $partition"
-    run repartitioner formatMicroSdCardPartitionAsEXT4 "$partition" || \
-        abort "!! Failed to format $partition partition on microSD card"
-    progress=$(awk -v p="$progress" 'BEGIN {
-        v = p + 0.01; printf "%.2f", (v > 0.90 ? 0.90 : v)
-    }')
-    set_progress $progress
-done
+ui_print "-- Repartitioning microSD card"
+run repartitioner_lite repartitionMicroSdCardLite "$OUTPUT_FD" 0.28 || abort "!! FATAL: Failed to repartition microSD card"
+set_progress 0.60
+
+ui_print "-- Formatting external partition as exFAT"
+run repartitioner_lite formatExternalPartitionAsExFAT || abort "!! Failed to format external partition"
+set_progress 0.70
+
+ui_print "-- Formatting vendor partition as EXT4"
+run repartitioner_lite formatVendorPartitionAsEXT4 || abort "!! Failed to format vendor partition"
+set_progress 0.80
 
 ui_print "-- Re-reading partition table from microSD card"
 run utilities reReadMicroSdPartitionTable || abort "!! Failed to re-read partition table"
 ui_print "-- microSD card repartitioned successfully!"
-set_progress 0.91
+set_progress 0.85
 ui_print " "
 
 # MISC
 ui_print "· Miscellaneous"
 ui_print "-- Calculating target partition sizes on microSD card"
-if run utilities calculateMicroSdPartitionSizes "$PARTITIONS"; then
-    ui_print "   - System: $(getProperty microsd_system_size $PROP)"
-    ui_print "   - Cache: $(getProperty microsd_cache_size $PROP)"
-    ui_print "   - Hidden: $(getProperty microsd_hidden_size $PROP)"
-    ui_print "   - Userdata: $(getProperty microsd_userdata_size $PROP)"
+if run utilities calculateMicroSdPartitionSizes "$PARTITIONS_LITE"; then
+    ui_print "   - External: $(getProperty microsd_external_size $PROP)"
     ui_print "   - Vendor: $(getProperty microsd_vendor_size $PROP)"
 fi
-set_progress 0.92
+set_progress 0.90
 
-progress="0.92"
-ui_print "-- Mounting target partitions"
-for partition in $PARTITIONS; do
-    if [ "$partition" = "userdata" ]; then
-        mount_point="/data_sdc2"
-    else
-        mount_point="/${partition}_sdc2"
-    fi
-
-    if ! run utilities mountMicroSdCardPartition "$partition"; then
-        ui_print "   ! Failed to mount $partition partition from microSD card"
-    else
-        ui_print "   - Mounted $partition partition as $mount_point"
-    fi
-    progress=$(awk -v p="$progress" 'BEGIN {
-        v = p + 0.01; printf "%.2f", (v > 0.97 ? 0.97 : v)
-    }')
-    set_progress $progress
-done
+if ! run utilities mountMicroSdCardPartition vendor; then
+    ui_print "!! Failed to mount vendor partition from microSD card"
+else
+    ui_print "-- Mounted vendor partition as /vendor_sdc2"
+fi
+set_progress 0.95
 ui_print " "
 
-if run utilities projectProtoInstalled; then
-    ui_print "ProjectProto installed successfully!"
+if run utilities projectProtoLiteInstalled; then
+    ui_print "ProjectProto Lite installed successfully!"
     ui_print " "
     ui_print "Note: Reboot to recovery to apply changes to the microSD card"
 else
-    ui_print "ProjectProto not properly installed!"
+    ui_print "ProjectProto Lite not properly installed!"
 fi
 ui_print " "
 set_progress 0.98

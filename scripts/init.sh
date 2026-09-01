@@ -66,6 +66,7 @@ generateProperties() {
     echo "microsd_hidden_size=0" >> "$PROP"
     echo "microsd_userdata_size=0" >> "$PROP"
     echo "microsd_vendor_size=0" >> "$PROP"
+    echo "microsd_external_size=0" >> "$PROP"
 
     chmod 0644 "$PROP"
     echo "$NAME: properties generated successfully"

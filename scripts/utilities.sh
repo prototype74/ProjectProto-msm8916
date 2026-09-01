@@ -47,6 +47,7 @@ calculateMicroSdSize() {
 
 # Calculate target partition sizes from microSD card
 calculateMicroSdPartitionSizes() {
+    local partition_list=$1
     local microsd_partition_table
     local partition_names
     local sector_size
@@ -65,7 +66,7 @@ calculateMicroSdPartitionSizes() {
     partition_names=$(printf '%s\n' "$microsd_partition_table" | awk '/^[[:space:]]*[0-9]+/ {print $1":"$7}')
     sector_size=$(blockdev --getss "$DEV_BLOCK_MICROSD")
 
-    for part_name in $PARTITIONS; do
+    for part_name in $partition_list; do
         if [ "$part_name" = "system" ]; then
             part_id=$(echo "$partition_names" | grep ":SYSTEM$" | cut -d: -f1)
         else
@@ -100,7 +101,6 @@ projectProtoInstalled() {
 
     # Expected sizes in bytes
     local EXPECT_SYSTEM_SIZE=$((1024 * 1024 * 3584))  # 3.5 GiB
-    local EXPECT_VENDOR_SIZE=$((1024 * 1024 * 700))   # 700 MiB
 
     if ! microSdCardAvailable; then
         echo "$NAME: microSD card not found: $DEV_BLOCK_MICROSD" >&2
@@ -129,12 +129,59 @@ projectProtoInstalled() {
     system_bytes=$(blockdev --getsize64 "${DEV_BLOCK_MICROSD}p${system_id}")
     vendor_bytes=$(blockdev --getsize64 "${DEV_BLOCK_MICROSD}p${vendor_id}")
 
-    if [ "$system_bytes" -ne "$EXPECT_SYSTEM_SIZE" ] || [ "$vendor_bytes" -ne "$EXPECT_VENDOR_SIZE" ]; then
+    if [ "$system_bytes" -ne "$EXPECT_SYSTEM_SIZE" ] || [ "$vendor_bytes" -ne "$VENDOR_SIZE_BYTES" ]; then
         echo "$NAME: ProjectProto not installed (size mismatch)" >&2
         return 1
     fi
 
     echo "$NAME: ProjectProto is installed"
+    return 0
+}
+
+# Check if ProjectProto Lite is installed on microSD card.
+projectProtoLiteInstalled() {
+    local microsd_partition_table
+    local partition_names partition_count
+    local vendor_id vendor_bytes
+
+    if ! microSdCardAvailable; then
+        echo "$NAME: microSD card not found: $DEV_BLOCK_MICROSD" >&2
+        return 1
+    fi
+
+    microsd_partition_table=$(sgdisk --print "$DEV_BLOCK_MICROSD" 2>/dev/null) || {
+        echo "$NAME: failed to read microSD card partition table" >&2
+        return 1
+    }
+
+    partition_names=$(printf '%s\n' "$microsd_partition_table" | awk '/^[[:space:]]*[0-9]+/ {print $1":"$7}')
+    partition_count=$(printf '%s\n' "$partition_names" | wc -l)
+
+    if [ "$partition_count" -ne 2 ]; then
+        echo "$NAME: ProjectProto Lite not installed (partition count: $partition_count)" >&2
+        return 1
+    fi
+
+    vendor_id=$(echo "$partition_names" | grep ":vendor$" | cut -d: -f1)
+
+    checkNumeric "$NAME" "vendor_id" "$vendor_id" || {
+        echo "$NAME: ProjectProto Lite not installed (no vendor partition)" >&2
+        return 1
+    }
+
+    if [ "$vendor_id" -ne 2 ]; then
+        echo "$NAME: ProjectProto Lite not installed (vendor is not partition 2)" >&2
+        return 1
+    fi
+
+    vendor_bytes=$(blockdev --getsize64 "${DEV_BLOCK_MICROSD}p${vendor_id}")
+
+    if [ "$vendor_bytes" -ne "$VENDOR_SIZE_BYTES" ]; then
+        echo "$NAME: ProjectProto Lite not installed (vendor size mismatch)" >&2
+        return 1
+    fi
+
+    echo "$NAME: ProjectProto Lite is installed"
     return 0
 }
 
@@ -144,7 +191,7 @@ isMicroSdMounted() {
 }
 
 # Mount a specified partition on microSD card.
-# Supported partitions are system, cache, hidden, userdata and vendor.
+# Supported partitions are system, cache, hidden, userdata, vendor and external.
 # The partition is mounted to /<part_name>_sdc2 (userdata to /data_sdc2).
 mountMicroSdCardPartition() {
     local part_name="$1"
@@ -158,7 +205,7 @@ mountMicroSdCardPartition() {
         return 1
     fi
 
-    if ! printf '%s\n' $PARTITIONS | grep -qxF "$part_name"; then
+    if ! printf '%s\n' $PARTITIONS $PARTITIONS_LITE | grep -qxF "$part_name"; then
         echo "$NAME: invalid partition name: $part_name" >&2
         return 1
     fi

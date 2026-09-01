@@ -25,6 +25,10 @@
 # =============================================================================
 # PROP ......................... Path to installer property file
 # PARTITIONS ................... Target partition order for iterations
+# PARTITIONS_LITE .............. Target partition order for iterations (Lite)
+# REQUIRED_TOOLS ............... Required tools
+# REQUIRED_TOOLS_LITE .......... Required tools (Lite)
+# VENDOR_SIZE_BYTES ............ Vendor partition size in bytes (700 MiB)
 # DEV_BLOCK_EMMC ............... Internal storage block device
 # DEV_BLOCK_MICROSD ............ microSD card block device
 # DEV_BLOCK_PLATFORM_EMMC ...... Platform path to internal storage device
@@ -33,6 +37,10 @@
 # =============================================================================
 readonly PROP="/tmp/scripts/installer.prop"
 readonly PARTITIONS="system cache hidden userdata vendor"
+readonly PARTITIONS_LITE="external vendor"
+readonly REQUIRED_TOOLS="dd sgdisk blockdev awk mke2fs"
+readonly REQUIRED_TOOLS_LITE="sgdisk blockdev awk mkexfatfs mke2fs"
+readonly VENDOR_SIZE_BYTES=$((1024 * 1024 * 700))
 readonly DEV_BLOCK_EMMC="/dev/block/mmcblk0"
 readonly DEV_BLOCK_MICROSD="/dev/block/mmcblk1"
 readonly DEV_BLOCK_PLATFORM_EMMC="/dev/block/platform/soc.0/7824900.sdhci"

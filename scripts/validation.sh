@@ -27,15 +27,12 @@ readonly NAME="validation"
 
 # Checks whether the required tools are provided by recovery
 checkRequiredTools() {
+    local tools="$1"
     local missing=""
 
-    for cmd in dd sgdisk blockdev awk mke2fs; do
+    for cmd in $tools; do
         if ! command -v "$cmd" > /dev/null 2>&1; then
-            if [ -n "$missing" ]; then
-                missing="$missing $cmd"
-            else
-                missing="$cmd"
-            fi
+            missing="${missing:+$missing }$cmd"
         fi
     done
 
@@ -45,6 +42,19 @@ checkRequiredTools() {
         return 1
     fi
 
+    return 0
+}
+
+# Check if device has MSM8916 SoC
+checkMSM8916Platform() {
+    local platform=$(getprop ro.board.platform)
+
+    if [ "$platform" != "msm8916" ]; then
+        echo "$NAME: unsupported platform: $platform (expected msm8916)" >&2
+        return 1
+    fi
+
+    echo "$NAME: MSM8916 platform detected"
     return 0
 }
 
@@ -139,6 +149,32 @@ compareMaxSectors() {
     return 1
 }
 
+# Check minimum microSD card size for Lite version
+checkMicroSdSizeLite() {
+    local microsd_max_sectors
+
+    if ! microSdCardAvailable; then
+        echo "$NAME: microSD card not found: $DEV_BLOCK_MICROSD" >&2
+        return 1
+    fi
+
+    microsd_max_sectors=$(blockdev --getsz "$DEV_BLOCK_MICROSD" 2>/dev/null) || {
+        echo "$NAME: failed to retrieve sector size of microSD card" >&2
+        return 1
+    }
+
+    checkNumeric "$NAME" "microsd_max_sectors" "$microsd_max_sectors" || return 1
+
+    # ~ 1.9 GiB (minimum ~2 GB)
+    if [ "$microsd_max_sectors" -lt 4000000 ]; then
+        echo "$NAME: microSD card size is lower than 2 GB" >&2
+        return 1
+    fi
+
+    echo "$NAME: sufficient space on microSD card"
+    return 0
+}
+
 # Ensure target partitions are in correct order
 # system -> cache -> hidden -> userdata
 checkEmmcPartitionLayout() {
@@ -190,7 +226,7 @@ checkEmmcPartitionLayout() {
 
 {
     if type "$1" >/dev/null 2>&1; then
-        "$1"
+        "$1" "$2"
         exit $?
     else
         echo "Function $1 not found" >&2

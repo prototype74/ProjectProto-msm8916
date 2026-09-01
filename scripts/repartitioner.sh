@@ -108,7 +108,7 @@ repartitionMicroSdCard() {
         return 1
     }
 
-    vendor_sector_size=$((1024 * 1024 * 700 / sector_size))
+    vendor_sector_size=$((VENDOR_SIZE_BYTES / sector_size))
     vendor_start_sector=$((total_sectors - vendor_sector_size + 1))
     vendor_id=$((userdata_id + 1))
 
